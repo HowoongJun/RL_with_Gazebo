@@ -40,7 +40,7 @@
     <model name="simple_create2">
       <include>
 		<uri>model://create</uri>
-		<pose>5.0 0 1 0 0 0</pose>
+		<pose>0.0 0 0 0 0 0</pose>
       </include>
       <plugin name="differential_drive_controller"     filename="libgazebo_ros_diff_drive.so">
 		<alwaysOn>true</alwaysOn>
