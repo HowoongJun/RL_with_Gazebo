@@ -17,8 +17,8 @@ state_size = obsNumber * 2
 action_size = 9
 num_episodes = 3601
 boundaryRadius = 1
-obstacleRadius = 0.2
-agentRadius = 0.2
+obstacleRadius = 0.19
+agentRadius = 0.19
 movingUnit = 0.02
 
 
