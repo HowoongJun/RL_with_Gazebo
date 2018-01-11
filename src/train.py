@@ -25,7 +25,7 @@ movingUnit = 0.017
 # A2C(Advantage Actor-Critic) agent
 class A2CAgent:
     def __init__(self, state_size, action_size):
-        self.load_model = False
+        self.load_model = True
         
         # get size of state and action
         self.state_size = state_size
@@ -42,8 +42,8 @@ class A2CAgent:
         self.critic = self.build_critic()
 
         if self.load_model:
-            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Rev.h5")
-            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Rev.h5")
+            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Actor_Rev_180110.h5")
+            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Critic_Rev_180110.h5")
 
     # approximate policy and value using Neural Network
     # actor: state is input and probability of each action is output of model

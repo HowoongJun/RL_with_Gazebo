@@ -1,0 +1,366 @@
+<sdf version="1.5">
+  <world name="default">
+    <include>
+      <uri>model://sun</uri>
+    </include>
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+
+    <!-- Name it uniquely to not conflict with <include>'d model  -->
+    <model name="simple_create">
+      <include>
+		<uri>model://create</uri>
+		<pose>0 0 0 0 0 0</pose>
+
+      </include>
+      <plugin name="differential_drive_controller"     filename="libgazebo_ros_diff_drive.so">
+		<alwaysOn>true</alwaysOn>
+		<updateRate>10</updateRate>
+		<leftJoint>create::right_wheel</leftJoint>
+		<rightJoint>create::left_wheel</rightJoint>
+
+		<wheelSeparation>0.5380</wheelSeparation>
+		<wheelDiameter>0.2410</wheelDiameter>
+		<wheelAcceleration>0</wheelAcceleration>
+		<wheelTorque>5</wheelTorque>
+		<torque>20</torque>
+		<commandTopic>cmd_vel</commandTopic>
+
+		<!-- topic name published in the cpp file -->
+		<odometryTopic>odom</odometryTopic>
+		<odometryFrame>odom</odometryFrame>
+		<odometrySource>1</odometrySource>
+		<robotBaseFrame>base</robotBaseFrame>
+		<legacyMode>false</legacyMode>
+		<publishTF>1</publishTF>
+		<publishWheelTF>true</publishWheelTF>
+		<publishWheelJointState>true</publishWheelJointState>
+		<rosDebugLevel>na</rosDebugLevel>
+      </plugin>
+    </model>
+
+    <model name="simple_create2">
+      <include>
+		<uri>model://create</uri>
+		<pose>0.0 0 0 0 0 0</pose>
+      </include>
+      <plugin name="differential_drive_controller"     filename="libgazebo_ros_diff_drive.so">
+		<alwaysOn>true</alwaysOn>
+		<updateRate>10</updateRate>
+		<leftJoint>create::right_wheel</leftJoint>
+		<rightJoint>create::left_wheel</rightJoint>
+
+		<wheelSeparation>0.5380</wheelSeparation>
+		<wheelAcceleration>0</wheelAcceleration>
+		<wheelDiameter>0.2410</wheelDiameter>
+		<wheelTorque>5</wheelTorque>
+
+		<torque>20</torque>
+		<commandTopic>cmd_vel</commandTopic>
+		
+
+		<!-- topic name published in the cpp file -->
+		<odometryTopic>odom</odometryTopic>
+		<odometryFrame>odom</odometryFrame>		
+		<odometrySource>1</odometrySource>
+		<robotBaseFrame>base</robotBaseFrame>
+		<legacyMode>false</legacyMode>
+		<publishTF>1</publishTF>
+		<publishWheelTF>true</publishWheelTF>
+		<publishWheelJointState>true</publishWheelJointState>
+		<rosDebugLevel>na</rosDebugLevel>
+
+      </plugin>
+    </model>
+
+    <model name="simple_create3">
+      <include>
+		<uri>model://create</uri>
+		<pose>0 0 0 0 0 0</pose>
+
+      </include>
+      <plugin name="differential_drive_controller"     filename="libgazebo_ros_diff_drive.so">
+		<alwaysOn>true</alwaysOn>
+		<updateRate>10</updateRate>
+		<leftJoint>create::right_wheel</leftJoint>
+		<rightJoint>create::left_wheel</rightJoint>
+
+		<wheelSeparation>0.5380</wheelSeparation>
+		<wheelDiameter>0.2410</wheelDiameter>
+		<wheelAcceleration>0</wheelAcceleration>
+		<wheelTorque>5</wheelTorque>
+		<torque>20</torque>
+		<commandTopic>cmd_vel</commandTopic>
+
+		<!-- topic name published in the cpp file -->
+		<odometryTopic>odom</odometryTopic>
+		<odometryFrame>odom</odometryFrame>
+		<odometrySource>1</odometrySource>
+		<robotBaseFrame>base</robotBaseFrame>
+		<legacyMode>false</legacyMode>
+		<publishTF>1</publishTF>
+		<publishWheelTF>true</publishWheelTF>
+		<publishWheelJointState>true</publishWheelJointState>
+		<rosDebugLevel>na</rosDebugLevel>
+      </plugin>
+    </model>
+
+		    <model name="simple_create4">
+      <include>
+		<uri>model://create</uri>
+		<pose>0 0 0 0 0 0</pose>
+
+      </include>
+      <plugin name="differential_drive_controller"     filename="libgazebo_ros_diff_drive.so">
+		<alwaysOn>true</alwaysOn>
+		<updateRate>10</updateRate>
+		<leftJoint>create::right_wheel</leftJoint>
+		<rightJoint>create::left_wheel</rightJoint>
+
+		<wheelSeparation>0.5380</wheelSeparation>
+		<wheelDiameter>0.2410</wheelDiameter>
+		<wheelAcceleration>0</wheelAcceleration>
+		<wheelTorque>5</wheelTorque>
+		<torque>20</torque>
+		<commandTopic>cmd_vel</commandTopic>
+
+		<!-- topic name published in the cpp file -->
+		<odometryTopic>odom</odometryTopic>
+		<odometryFrame>odom</odometryFrame>
+		<odometrySource>1</odometrySource>
+		<robotBaseFrame>base</robotBaseFrame>
+		<legacyMode>false</legacyMode>
+		<publishTF>1</publishTF>
+		<publishWheelTF>true</publishWheelTF>
+		<publishWheelJointState>true</publishWheelJointState>
+		<rosDebugLevel>na</rosDebugLevel>
+      </plugin>
+    </model>
+
+    <model name="simple_create5">
+      <include>
+		<uri>model://create</uri>
+		<pose>0 0 0 0 0 0</pose>
+
+      </include>
+      <plugin name="differential_drive_controller"     filename="libgazebo_ros_diff_drive.so">
+		<alwaysOn>true</alwaysOn>
+		<updateRate>10</updateRate>
+		<leftJoint>create::right_wheel</leftJoint>
+		<rightJoint>create::left_wheel</rightJoint>
+
+		<wheelSeparation>0.5380</wheelSeparation>
+		<wheelDiameter>0.2410</wheelDiameter>
+		<wheelAcceleration>0</wheelAcceleration>
+		<wheelTorque>5</wheelTorque>
+		<torque>20</torque>
+		<commandTopic>cmd_vel</commandTopic>
+
+		<!-- topic name published in the cpp file -->
+		<odometryTopic>odom</odometryTopic>
+		<odometryFrame>odom</odometryFrame>
+		<odometrySource>1</odometrySource>
+		<robotBaseFrame>base</robotBaseFrame>
+		<legacyMode>false</legacyMode>
+		<publishTF>1</publishTF>
+		<publishWheelTF>true</publishWheelTF>
+		<publishWheelJointState>true</publishWheelJointState>
+		<rosDebugLevel>na</rosDebugLevel>
+      </plugin>
+    </model>
+
+		    <model name="simple_create6">
+      <include>
+		<uri>model://create</uri>
+		<pose>0 0 0 0 0 0</pose>
+
+      </include>
+      <plugin name="differential_drive_controller"     filename="libgazebo_ros_diff_drive.so">
+		<alwaysOn>true</alwaysOn>
+		<updateRate>10</updateRate>
+		<leftJoint>create::right_wheel</leftJoint>
+		<rightJoint>create::left_wheel</rightJoint>
+
+		<wheelSeparation>0.5380</wheelSeparation>
+		<wheelDiameter>0.2410</wheelDiameter>
+		<wheelAcceleration>0</wheelAcceleration>
+		<wheelTorque>5</wheelTorque>
+		<torque>20</torque>
+		<commandTopic>cmd_vel</commandTopic>
+
+		<!-- topic name published in the cpp file -->
+		<odometryTopic>odom</odometryTopic>
+		<odometryFrame>odom</odometryFrame>
+		<odometrySource>1</odometrySource>
+		<robotBaseFrame>base</robotBaseFrame>
+		<legacyMode>false</legacyMode>
+		<publishTF>1</publishTF>
+		<publishWheelTF>true</publishWheelTF>
+		<publishWheelJointState>true</publishWheelJointState>
+		<rosDebugLevel>na</rosDebugLevel>
+      </plugin>
+    </model>
+
+    <model name="simple_create7">
+      <include>
+		<uri>model://create</uri>
+		<pose>0 0 0 0 0 0</pose>
+
+      </include>
+      <plugin name="differential_drive_controller"     filename="libgazebo_ros_diff_drive.so">
+		<alwaysOn>true</alwaysOn>
+		<updateRate>10</updateRate>
+		<leftJoint>create::right_wheel</leftJoint>
+		<rightJoint>create::left_wheel</rightJoint>
+
+		<wheelSeparation>0.5380</wheelSeparation>
+		<wheelDiameter>0.2410</wheelDiameter>
+		<wheelAcceleration>0</wheelAcceleration>
+		<wheelTorque>5</wheelTorque>
+		<torque>20</torque>
+		<commandTopic>cmd_vel</commandTopic>
+
+		<!-- topic name published in the cpp file -->
+		<odometryTopic>odom</odometryTopic>
+		<odometryFrame>odom</odometryFrame>
+		<odometrySource>1</odometrySource>
+		<robotBaseFrame>base</robotBaseFrame>
+		<legacyMode>false</legacyMode>
+		<publishTF>1</publishTF>
+		<publishWheelTF>true</publishWheelTF>
+		<publishWheelJointState>true</publishWheelJointState>
+		<rosDebugLevel>na</rosDebugLevel>
+      </plugin>
+    </model>
+
+    <model name="simple_create8">
+      <include>
+		<uri>model://create</uri>
+		<pose>0 0 0 0 0 0</pose>
+
+      </include>
+      <plugin name="differential_drive_controller"     filename="libgazebo_ros_diff_drive.so">
+		<alwaysOn>true</alwaysOn>
+		<updateRate>10</updateRate>
+		<leftJoint>create::right_wheel</leftJoint>
+		<rightJoint>create::left_wheel</rightJoint>
+
+		<wheelSeparation>0.5380</wheelSeparation>
+		<wheelDiameter>0.2410</wheelDiameter>
+		<wheelAcceleration>0</wheelAcceleration>
+		<wheelTorque>5</wheelTorque>
+		<torque>20</torque>
+		<commandTopic>cmd_vel</commandTopic>
+
+		<!-- topic name published in the cpp file -->
+		<odometryTopic>odom</odometryTopic>
+		<odometryFrame>odom</odometryFrame>
+		<odometrySource>1</odometrySource>
+		<robotBaseFrame>base</robotBaseFrame>
+		<legacyMode>false</legacyMode>
+		<publishTF>1</publishTF>
+		<publishWheelTF>true</publishWheelTF>
+		<publishWheelJointState>true</publishWheelJointState>
+		<rosDebugLevel>na</rosDebugLevel>
+      </plugin>
+    </model>
+
+    <model name="simple_create9">
+      <include>
+		<uri>model://create</uri>
+		<pose>0 0 0 0 0 0</pose>
+
+      </include>
+      <plugin name="differential_drive_controller"     filename="libgazebo_ros_diff_drive.so">
+		<alwaysOn>true</alwaysOn>
+		<updateRate>10</updateRate>
+		<leftJoint>create::right_wheel</leftJoint>
+		<rightJoint>create::left_wheel</rightJoint>
+
+		<wheelSeparation>0.5380</wheelSeparation>
+		<wheelDiameter>0.2410</wheelDiameter>
+		<wheelAcceleration>0</wheelAcceleration>
+		<wheelTorque>5</wheelTorque>
+		<torque>20</torque>
+		<commandTopic>cmd_vel</commandTopic>
+
+		<!-- topic name published in the cpp file -->
+		<odometryTopic>odom</odometryTopic>
+		<odometryFrame>odom</odometryFrame>
+		<odometrySource>1</odometrySource>
+		<robotBaseFrame>base</robotBaseFrame>
+		<legacyMode>false</legacyMode>
+		<publishTF>1</publishTF>
+		<publishWheelTF>true</publishWheelTF>
+		<publishWheelJointState>true</publishWheelJointState>
+		<rosDebugLevel>na</rosDebugLevel>
+      </plugin>
+    </model>
+
+    <model name="simple_create10">
+      <include>
+		<uri>model://create</uri>
+		<pose>0 0 0 0 0 0</pose>
+
+      </include>
+      <plugin name="differential_drive_controller"     filename="libgazebo_ros_diff_drive.so">
+		<alwaysOn>true</alwaysOn>
+		<updateRate>10</updateRate>
+		<leftJoint>create::right_wheel</leftJoint>
+		<rightJoint>create::left_wheel</rightJoint>
+
+		<wheelSeparation>0.5380</wheelSeparation>
+		<wheelDiameter>0.2410</wheelDiameter>
+		<wheelAcceleration>0</wheelAcceleration>
+		<wheelTorque>5</wheelTorque>
+		<torque>20</torque>
+		<commandTopic>cmd_vel</commandTopic>
+
+		<!-- topic name published in the cpp file -->
+		<odometryTopic>odom</odometryTopic>
+		<odometryFrame>odom</odometryFrame>
+		<odometrySource>1</odometrySource>
+		<robotBaseFrame>base</robotBaseFrame>
+		<legacyMode>false</legacyMode>
+		<publishTF>1</publishTF>
+		<publishWheelTF>true</publishWheelTF>
+		<publishWheelJointState>true</publishWheelJointState>
+		<rosDebugLevel>na</rosDebugLevel>
+      </plugin>
+    </model>
+
+		    <model name="simple_create11">
+      <include>
+		<uri>model://create</uri>
+		<pose>0 0 0 0 0 0</pose>
+
+      </include>
+      <plugin name="differential_drive_controller"     filename="libgazebo_ros_diff_drive.so">
+		<alwaysOn>true</alwaysOn>
+		<updateRate>10</updateRate>
+		<leftJoint>create::right_wheel</leftJoint>
+		<rightJoint>create::left_wheel</rightJoint>
+
+		<wheelSeparation>0.5380</wheelSeparation>
+		<wheelDiameter>0.2410</wheelDiameter>
+		<wheelAcceleration>0</wheelAcceleration>
+		<wheelTorque>5</wheelTorque>
+		<torque>20</torque>
+		<commandTopic>cmd_vel</commandTopic>
+
+		<!-- topic name published in the cpp file -->
+		<odometryTopic>odom</odometryTopic>
+		<odometryFrame>odom</odometryFrame>
+		<odometrySource>1</odometrySource>
+		<robotBaseFrame>base</robotBaseFrame>
+		<legacyMode>false</legacyMode>
+		<publishTF>1</publishTF>
+		<publishWheelTF>true</publishWheelTF>
+		<publishWheelJointState>true</publishWheelJointState>
+		<rosDebugLevel>na</rosDebugLevel>
+      </plugin>
+    </model>
+
+  </world>
+</sdf>
