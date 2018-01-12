@@ -18,10 +18,10 @@ obstacleRadius = 0.18
 agentRadius = 0.18
 obsNumber = 10
 state_size = 2
-action_size = 9
+action_size = 8
 boundaryRadius = 0.85
 movingUnit = 0.017
-goalPos = [10, 10]
+goalPos = [5, 5]
 moveObstacles = True
 
 # A2C(Advantage Actor-Critic) agent
@@ -149,9 +149,9 @@ def takeAction(action):
         yAction = -movingUnit
     elif action == 7:
         yAction = movingUnit
-    elif action == 8:
-        xAction = 0
-        yAction = 0
+    # elif action == 8:
+    #     xAction = 0
+    #     yAction = 0
         
     return [xAction, yAction]
 
@@ -160,6 +160,7 @@ def main():
     
     obsAngleIdx= 0
     initPosMainRobot = [0, 0]
+    rList = []
 
     # twistMainRobot_pub = rospy.Publisher('simple_create/cmd_vel', Twist, queue_size=10)
     # twistObstRobot_pub = rospy.Publisher('simple_create2/cmd_vel', Twist, queue_size=10)
@@ -174,8 +175,8 @@ def main():
         posObstRobot_pub = posObstRobot_pub + [rospy.Publisher('gazebo/set_model_state', ModelState, queue_size = 10)]
         posObstRobot_msg.append(ModelState())
         posObstRobot_msg[i].model_name = "simple_create" + str(i + 2)
-        posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + obstacleRadius + agentRadius + random.randrange(0, 10)
-        posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + obstacleRadius + agentRadius + random.randrange(0, 10)
+        posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + obstacleRadius + agentRadius + random.randrange(0, goalPos[0])
+        posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + obstacleRadius + agentRadius + random.randrange(0, goalPos[1])
         posObstRobot_msg[i].pose.position.z = 0
 
     # twistMainRobot_msg = Twist()
@@ -198,6 +199,7 @@ def main():
         posMainRobot_msg.pose.position.y = initPosMainRobot[1]
         posMainRobot_msg.pose.position.z = 0
         rospy.logwarn("Episode %d Starts!", e)
+        rospy.logwarn(datetime.datetime.now().strftime('%H:%M:%S'))
 
         while not done:
             [rangeObsNumber, rangeObsPos] = rangeFinder(posObstRobot_msg, initPosMainRobot)
@@ -261,15 +263,17 @@ def main():
             else:
                 if collisionFlag == 1:
                     reward = 10000
+                    rList.append(1)
                 elif collisionFlag == -1:
                     reward = -10000
+                    rList.append(0)
             score += reward
 
             if done:
                 initPosMainRobot = [0, 0]
                 for i in range(0, obsNumber):
-                    posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + obstacleRadius + agentRadius + random.randrange(0, 10)
-                    posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + obstacleRadius + agentRadius + random.randrange(0, 10)
+                    posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + obstacleRadius + agentRadius + random.randrange(0, goalPos[0])
+                    posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + obstacleRadius + agentRadius + random.randrange(0, goalPos[1])
                     posObstRobot_msg[i].pose.position.z = 0
 
             posMainRobot_pub.publish(posMainRobot_msg)
@@ -277,6 +281,8 @@ def main():
                 posObstRobot_pub[i].publish(posObstRobot_msg[i])
 
             rate.sleep()
+
+    rospy.logwarn("Percent of successful episodes: %f %", 100.0 * sum(rList)/num_episodes)
 
 if __name__ == '__main__':
     try:

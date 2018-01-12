@@ -330,7 +330,7 @@
       </plugin>
     </model>
 
-		    <model name="simple_create11">
+	<model name="simple_create11">
       <include>
 		<uri>model://create</uri>
 		<pose>0 0 0 0 0 0</pose>
@@ -361,6 +361,5 @@
 		<rosDebugLevel>na</rosDebugLevel>
       </plugin>
     </model>
-
   </world>
 </sdf>
