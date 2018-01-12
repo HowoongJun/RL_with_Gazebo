@@ -19,10 +19,9 @@ agentRadius = 0.18
 obsNumber = 10
 state_size = 2
 action_size = 9
-boundaryRadius = 1
-movingUnit = 0.02
+boundaryRadius = 0.85
+movingUnit = 0.017
 goalPos = [10, 10]
-goalAngle = 0
 moveObstacles = True
 
 # A2C(Advantage Actor-Critic) agent
@@ -45,8 +44,8 @@ class A2CAgent:
         self.critic = self.build_critic()
 
         if self.load_model:
-            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Actor_Rev_180110.h5")
-            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Critic_Rev_180110.h5")
+            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Rev.h5")
+            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Rev.h5")
 
     # approximate policy and value using Neural Network
     # actor: state is input and probability of each action is output of model
@@ -111,6 +110,7 @@ def rangeFinder(allObsPos, rangeCenter):
     return [countObs, rangeObstacle]
 
 def goalFinder(agtPos):
+    goalAngle = 0
     if goalPos[0] == agtPos[0]:
         if goalPos[1] > agtPos[1]:
             goalAngle = 90 * math.pi / 180
@@ -206,7 +206,7 @@ def main():
                 state = stateGenerator(rangeObsPos, [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], i)
                 policyArr = agent.get_action(state)
                 if i == 0:
-                    tmpAction = agent.get_action(state)
+                    tmpAction = (1 - policyArr)
                 else:
                     tmpAction = tmpAction * (1 - policyArr)
             if tmpAction != []:
@@ -224,12 +224,14 @@ def main():
             state = stateGenerator(tmpGoalPos, [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
             policyArr = agent.get_action(state)
 
+            # rospy.logwarn(tmpAction)
+
             if np.mean(tmpAction) == 0:
-                tmpAction[tmpArgMax] = 1
+                tmpAction[random.randrange(0, 9)] = 1
 
             tmpAction = tmpAction * np.asarray(policyArr)
             tmpAction = tmpAction / np.sum(tmpAction)
-            # rospy.logwarn(tmpAction)
+
             action = np.random.choice(action_size, 1, p = tmpAction)[0]
 
             xMove = 0
