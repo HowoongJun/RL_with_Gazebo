@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import rospy
-# from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist
 from gazebo_msgs.msg import ModelState
 import numpy as np
 import sys, random
@@ -18,7 +18,7 @@ obstacleRadius = 0.18
 agentRadius = 0.18
 obsNumber = 10
 state_size = 2
-action_size = 8
+action_size = 9
 boundaryRadius = 0.85
 movingUnit = 0.017
 goalPos = [5, 5]
@@ -44,8 +44,8 @@ class A2CAgent:
         self.critic = self.build_critic()
 
         if self.load_model:
-            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Rev.h5")
-            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Rev.h5")
+            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Actor_Rev_180112.h5")
+            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Critic_Rev_180112.h5")
 
     # approximate policy and value using Neural Network
     # actor: state is input and probability of each action is output of model
@@ -164,8 +164,12 @@ def main():
 
     # twistMainRobot_pub = rospy.Publisher('simple_create/cmd_vel', Twist, queue_size=10)
     # twistObstRobot_pub = rospy.Publisher('simple_create2/cmd_vel', Twist, queue_size=10)
+    
     posObstRobot_pub = []
     posObstRobot_msg = []
+
+    # twistObstRobot_pub = []
+    # twistObstRobot_msg = []
 
     posMainRobot_pub = rospy.Publisher('gazebo/set_model_state', ModelState, queue_size = 10)
     posMainRobot_msg = ModelState()
@@ -175,10 +179,12 @@ def main():
         posObstRobot_pub = posObstRobot_pub + [rospy.Publisher('gazebo/set_model_state', ModelState, queue_size = 10)]
         posObstRobot_msg.append(ModelState())
         posObstRobot_msg[i].model_name = "simple_create" + str(i + 2)
-        posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + obstacleRadius + agentRadius + random.randrange(0, goalPos[0])
-        posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + obstacleRadius + agentRadius + random.randrange(0, goalPos[1])
+        posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + obstacleRadius + agentRadius + random.randrange(1, goalPos[0])
+        posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + obstacleRadius + agentRadius + random.randrange(1, goalPos[1])
         posObstRobot_msg[i].pose.position.z = 0
 
+        # twistObstRobot_pub = twistObstRobot_pub + [rospy.Publisher('simple_create' + str(i+2) + '/cmd_vel', Twist, queue_size=10)]
+        # twistObstRobot_msg.append(Twist())
     # twistMainRobot_msg = Twist()
     # twistObstRobot_msg = Twist()
     # twistMainRobot_msg.linear.x = 0
@@ -200,7 +206,7 @@ def main():
         posMainRobot_msg.pose.position.z = 0
         rospy.logwarn("Episode %d Starts!", e)
         rospy.logwarn(datetime.datetime.now().strftime('%H:%M:%S'))
-
+        
         while not done:
             [rangeObsNumber, rangeObsPos] = rangeFinder(posObstRobot_msg, initPosMainRobot)
             tmpAction = []
@@ -212,15 +218,17 @@ def main():
                 else:
                     tmpAction = tmpAction * (1 - policyArr)
             if tmpAction != []:
-                for j in range(0,9):
-                    if tmpAction[j] > 0.9999:
+                for j in range(0,action_size):
+                    if tmpAction[j] > 0.999:
                         tmpAction[j] = 1
+                    elif tmpAction[j] > 0.99:
+                        tmpAction[j] = 0.1
                     else:
                         tmpAction[j] = 0
                 tmpArgMax = np.argmax(tmpAction)
 
             if rangeObsNumber == 0:
-                tmpAction = [1.0/9.0 for _ in range(0,9)]
+                tmpAction = [1.0/action_size for _ in range(0,action_size)]
             tmpGoalPos = goalFinder([posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y])
 
             state = stateGenerator(tmpGoalPos, [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
@@ -229,7 +237,8 @@ def main():
             # rospy.logwarn(tmpAction)
 
             if np.mean(tmpAction) == 0:
-                tmpAction[random.randrange(0, 9)] = 1
+                rospy.logerr("No Action Selected! Random Action")
+                tmpAction[random.randrange(0, action_size)] = 1
 
             tmpAction = tmpAction * np.asarray(policyArr)
             tmpAction = tmpAction / np.sum(tmpAction)
@@ -253,6 +262,8 @@ def main():
                 if moveObstacles:
                     posObstRobot_msg[i].pose.position.x += random.randrange(-1, 2)/100.0
                     posObstRobot_msg[i].pose.position.y += random.randrange(-1, 2)/100.0
+                    # twistObstRobot_msg[i].linear.x = random.randrange(-1, 2)
+                    # twistObstRobot_msg[i].angular.z = random.randrange(-1, 2)
                 if math.sqrt((posMainRobot_msg.pose.position.x - posObstRobot_msg[i].pose.position.x)**2 + (posMainRobot_msg.pose.position.y - posObstRobot_msg[i].pose.position.y)**2) <= obstacleRadius + agentRadius:
                     rospy.logwarn("Collision!")
                     collsiionFlag = -1
@@ -272,17 +283,19 @@ def main():
             if done:
                 initPosMainRobot = [0, 0]
                 for i in range(0, obsNumber):
-                    posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + obstacleRadius + agentRadius + random.randrange(0, goalPos[0])
-                    posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + obstacleRadius + agentRadius + random.randrange(0, goalPos[1])
+                    posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + obstacleRadius + agentRadius + random.randrange(1, goalPos[0])
+                    posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + obstacleRadius + agentRadius + random.randrange(1, goalPos[1])
                     posObstRobot_msg[i].pose.position.z = 0
+                    
 
             posMainRobot_pub.publish(posMainRobot_msg)
             for i in range(0, obsNumber):
                 posObstRobot_pub[i].publish(posObstRobot_msg[i])
+                # twistObstRobot_pub[i].publish(twistObstRobot_msg[i])
 
             rate.sleep()
 
-    rospy.logwarn("Percent of successful episodes: %f %", 100.0 * sum(rList)/num_episodes)
+    rospy.logwarn("Percent of successful episodes: %f %%", 100.0 * sum(rList)/num_episodes)
 
 if __name__ == '__main__':
     try:
