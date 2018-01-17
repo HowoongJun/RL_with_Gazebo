@@ -13,7 +13,7 @@ import math
 import datetime
 
 # Environment Setting
-num_episodes = 10
+num_episodes = 1001
 obstacleRadius = 0.18
 agentRadius = 0.18
 obsNumber = 10
@@ -27,7 +27,8 @@ moveObstacles = True
 # A2C(Advantage Actor-Critic) agent
 class A2CAgent:
     def __init__(self, state_size, action_size):
-        self.load_model = True
+        self.load_model1 = True
+        self.load_model2 = False
         
         # get size of state and action
         self.state_size = state_size
@@ -43,9 +44,13 @@ class A2CAgent:
         self.actor = self.build_actor()
         self.critic = self.build_critic()
 
-        if self.load_model:
+        if self.load_model1:
             self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Actor_Rev_180112.h5")
             self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Critic_Rev_180112.h5")
+        if self.load_model2:
+            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
+            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
+
 
     # approximate policy and value using Neural Network
     # actor: state is input and probability of each action is output of model
@@ -102,12 +107,14 @@ def stateGenerator(obsPosition, agtPosition, idx):
 def rangeFinder(allObsPos, rangeCenter):
     countObs = 0
     rangeObstacle = [[0,0] for _ in range(obsNumber)]
+    allObsAgtDistance = [0 for _ in range(obsNumber)]
     for i in range(0, obsNumber):
+        allObsAgtDistance[i] = math.sqrt((allObsPos[i].pose.position.x - rangeCenter[0])**2 + (allObsPos[i].pose.position.y - rangeCenter[1])**2)
         if math.sqrt((rangeCenter[0] - allObsPos[i].pose.position.x)**2 + (rangeCenter[1] - allObsPos[i].pose.position.y)**2) < boundaryRadius:
             rangeObstacle[countObs] = allObsPos[i]
             countObs += 1
-            
-    return [countObs, rangeObstacle]
+    index = np.argmin(allObsAgtDistance)
+    return [countObs, rangeObstacle, index]
 
 def goalFinder(agtPos):
     goalAngle = 0
@@ -149,15 +156,16 @@ def takeAction(action):
         yAction = -movingUnit
     elif action == 7:
         yAction = movingUnit
-    # elif action == 8:
-    #     xAction = 0
-    #     yAction = 0
+    elif action == 8:
+        xAction = 0
+        yAction = 0
         
     return [xAction, yAction]
 
 def main():
     agent = A2CAgent(state_size, action_size)
-    
+    macroAgent = A2CAgent(state_size, action_size)
+
     obsAngleIdx= 0
     initPosMainRobot = [0, 0]
     rList = []
@@ -170,7 +178,9 @@ def main():
 
     # twistObstRobot_pub = []
     # twistObstRobot_msg = []
-
+    goalPos_pub = rospy.Publisher('gazebo/set_model_state', ModelState, queue_size=10)
+    goalPos_msg = ModelState()
+    goalPos_msg.model_name = "unit_cylinder_0"
     posMainRobot_pub = rospy.Publisher('gazebo/set_model_state', ModelState, queue_size = 10)
     posMainRobot_msg = ModelState()
     posMainRobot_msg.model_name = "simple_create"
@@ -182,7 +192,9 @@ def main():
         posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + obstacleRadius + agentRadius + random.randrange(1, goalPos[0])
         posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + obstacleRadius + agentRadius + random.randrange(1, goalPos[1])
         posObstRobot_msg[i].pose.position.z = 0
-
+    goalPos_msg.pose.position.x = goalPos[0]
+    goalPos_msg.pose.position.y = goalPos[1]
+    goalPos_msg.pose.position.z = 0
         # twistObstRobot_pub = twistObstRobot_pub + [rospy.Publisher('simple_create' + str(i+2) + '/cmd_vel', Twist, queue_size=10)]
         # twistObstRobot_msg.append(Twist())
     # twistMainRobot_msg = Twist()
@@ -208,7 +220,11 @@ def main():
         rospy.logwarn(datetime.datetime.now().strftime('%H:%M:%S'))
         
         while not done:
-            [rangeObsNumber, rangeObsPos] = rangeFinder(posObstRobot_msg, initPosMainRobot)
+            [rangeObsNumber, rangeObsPos, minIndex] = rangeFinder(posObstRobot_msg, initPosMainRobot)
+
+            macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
+            macroPolicy = macroAgent.get_action(macroState)
+            # rospy.logwarn(macroPolicy)
             tmpAction = []
             for i in range(0, rangeObsNumber):
                 state = stateGenerator(rangeObsPos, [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], i)
@@ -233,7 +249,7 @@ def main():
 
             state = stateGenerator(tmpGoalPos, [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
             policyArr = agent.get_action(state)
-
+            
             # rospy.logwarn(tmpAction)
 
             if np.mean(tmpAction) == 0:
@@ -242,6 +258,9 @@ def main():
 
             tmpAction = tmpAction * np.asarray(policyArr)
             tmpAction = tmpAction / np.sum(tmpAction)
+
+            # Must be checked - Applying macro action
+            # tmpAction = tmpAction * np.asarray(macroPolicy)
 
             action = np.random.choice(action_size, 1, p = tmpAction)[0]
 
@@ -253,6 +272,7 @@ def main():
             posMainRobot_msg.pose.position.y += yMove
 
             collisionFlag = 0
+            next_macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
             initPosMainRobot = [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y]
             if(math.sqrt((posMainRobot_msg.pose.position.x - goalPos[0])**2 + (posMainRobot_msg.pose.position.y - goalPos[1])**2) <= agentRadius):
                 rospy.logwarn("Goal Reached!")
@@ -270,15 +290,19 @@ def main():
                     done = True
 
             if not done:
-                reward = 0.1
+                reward = 0
             else:
                 if collisionFlag == 1:
-                    reward = 10000
+                    reward = 1000
                     rList.append(1)
                 elif collisionFlag == -1:
-                    reward = -10000
+                    reward = -1000
                     rList.append(0)
+            
+            macroAction = np.random.choice(action_size, 1, p=macroPolicy)
+            macroAgent.train_model(macroState, macroAction, reward, next_macroState, done)
             score += reward
+            macroState = next_macroState
 
             if done:
                 initPosMainRobot = [0, 0]
@@ -286,15 +310,20 @@ def main():
                     posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + obstacleRadius + agentRadius + random.randrange(1, goalPos[0])
                     posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + obstacleRadius + agentRadius + random.randrange(1, goalPos[1])
                     posObstRobot_msg[i].pose.position.z = 0
-                    
+                goalPos_msg.pose.position.x = goalPos[0]
+                goalPos_msg.pose.position.y = goalPos[1]
+                goalPos_msg.pose.position.z = 0
 
+            goalPos_pub.publish(goalPos_msg)
             posMainRobot_pub.publish(posMainRobot_msg)
             for i in range(0, obsNumber):
                 posObstRobot_pub[i].publish(posObstRobot_msg[i])
                 # twistObstRobot_pub[i].publish(twistObstRobot_msg[i])
 
             rate.sleep()
-
+        if e % 50 == 0:
+            agent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
+            agent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
     rospy.logwarn("Percent of successful episodes: %f %%", 100.0 * sum(rList)/num_episodes)
 
 if __name__ == '__main__':
