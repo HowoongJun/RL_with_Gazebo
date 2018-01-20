@@ -28,7 +28,7 @@ moveObstacles = True
 class A2CAgent:
     def __init__(self, state_size, action_size):
         self.load_model1 = True
-        self.load_model2 = False
+        self.load_model2 = True
         
         # get size of state and action
         self.state_size = state_size
@@ -113,6 +113,7 @@ def rangeFinder(allObsPos, rangeCenter):
         if math.sqrt((rangeCenter[0] - allObsPos[i].pose.position.x)**2 + (rangeCenter[1] - allObsPos[i].pose.position.y)**2) < boundaryRadius:
             rangeObstacle[countObs] = allObsPos[i]
             countObs += 1
+
     index = np.argmin(allObsAgtDistance)
     return [countObs, rangeObstacle, index]
 
@@ -211,7 +212,6 @@ def main():
 
     for e in range(num_episodes):
         done = False
-        score = 0
         reward = 0
         posMainRobot_msg.pose.position.x = initPosMainRobot[0]
         posMainRobot_msg.pose.position.y = initPosMainRobot[1]
@@ -237,7 +237,7 @@ def main():
                 for j in range(0,action_size):
                     if tmpAction[j] > 0.999:
                         tmpAction[j] = 1
-                    elif tmpAction[j] > 0.99:
+                    elif tmpAction[j] > 0.995:
                         tmpAction[j] = 0.1
                     else:
                         tmpAction[j] = 0
@@ -249,19 +249,20 @@ def main():
 
             state = stateGenerator(tmpGoalPos, [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
             policyArr = agent.get_action(state)
-            
+
             # rospy.logwarn(tmpAction)
 
             if np.mean(tmpAction) == 0:
-                rospy.logerr("No Action Selected! Random Action")
+                rospy.logwarn("No Action Selected! Random Action")
                 tmpAction[random.randrange(0, action_size)] = 1
 
             tmpAction = tmpAction * np.asarray(policyArr)
-            tmpAction = tmpAction / np.sum(tmpAction)
 
             # Must be checked - Applying macro action
-            # tmpAction = tmpAction * np.asarray(macroPolicy)
-
+            if rangeObsNumber != 0:
+                tmpAction = tmpAction * np.asarray(1 - macroPolicy)
+            # rospy.logwarn(macroPolicy)
+            tmpAction = tmpAction / np.sum(tmpAction)
             action = np.random.choice(action_size, 1, p = tmpAction)[0]
 
             xMove = 0
@@ -293,15 +294,16 @@ def main():
                 reward = 0
             else:
                 if collisionFlag == 1:
-                    reward = 1000
+                    reward = -1000
                     rList.append(1)
                 elif collisionFlag == -1:
-                    reward = -1000
+                    reward = 1000
                     rList.append(0)
             
-            macroAction = np.random.choice(action_size, 1, p=macroPolicy)
-            macroAgent.train_model(macroState, macroAction, reward, next_macroState, done)
-            score += reward
+            # macroAction = np.random.choice(action_size, 1, p=macroPolicy)
+            # macroAgent.train_model(macroState, macroAction, reward, next_macroState, done)
+            macroAgent.train_model(macroState, action, reward, next_macroState, done)
+            
             macroState = next_macroState
 
             if done:
