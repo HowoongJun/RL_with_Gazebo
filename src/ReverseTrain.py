@@ -15,8 +15,8 @@ import datetime
 # Environment Setting
 obsNumber = 1
 state_size = obsNumber * 2
-action_size = 8
-num_episodes = 3601
+action_size = 9
+num_episodes = 181
 boundaryRadius = 0.85
 obstacleRadius = 0.2
 agentRadius = 0.17
@@ -116,9 +116,9 @@ def takeAction(action):
         yAction = -movingUnit
     elif action == 7:
         yAction = movingUnit
-    # elif action == 8:
-    #     xAction = 0
-    #     yAction = 0
+    elif action == 8:
+        xAction = 0
+        yAction = 0
         
     return [xAction, yAction]
 
@@ -212,9 +212,9 @@ def main():
                     circleFlag = False
                     initRandom = random.randrange(0, 360)
                 if circleFlag == False:
-                    obsAngleIdx += 1
+                    obsAngleIdx += 2
                 else:
-                    obsAngleIdx -= 1
+                    obsAngleIdx -= 2
                 obsAngle = (obsAngleIdx + initRandom)*math.pi/180
                 posObstRobot_msg.pose.position.x = initPosMainRobot[0] + boundaryRadius * math.cos(obsAngle)
                 posObstRobot_msg.pose.position.y = initPosMainRobot[1] + boundaryRadius * math.sin(obsAngle)
@@ -222,7 +222,7 @@ def main():
             posObstRobot_pub.publish(posObstRobot_msg)
             rate.sleep()
 
-        if e % 50 == 0:
+        if e % 60 == 0:
             agent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Rev.h5")
             agent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Rev.h5")
         rospy.logwarn("Reward: %d", score)

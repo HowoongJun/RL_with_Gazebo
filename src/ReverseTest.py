@@ -13,7 +13,7 @@ import math
 import datetime
 
 # Environment Setting
-num_episodes = 1
+num_episodes = 10
 obstacleRadius = 0.18
 agentRadius = 0.18
 obsNumber = 10
@@ -46,8 +46,10 @@ class A2CAgent:
         self.critic = self.build_critic()
 
         if self.load_model1:
-            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Actor_Rev_180112.h5")
-            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Critic_Rev_180112.h5")
+            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Rev.h5")
+            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Rev.h5")
+            # self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Actor_Rev_180112.h5")
+            # self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Critic_Rev_180112.h5")
 
         if self.load_model2:
             self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
