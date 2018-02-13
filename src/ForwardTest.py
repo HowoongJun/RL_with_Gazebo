@@ -13,7 +13,7 @@ import math
 import datetime
 
 # Environment Setting
-num_episodes = 1001
+num_episodes = 1
 obstacleRadius = 0.18
 agentRadius = 0.18
 obsNumber = 10
@@ -23,6 +23,7 @@ boundaryRadius = 0.85
 movingUnit = 0.017
 goalPos = [5, 5]
 moveObstacles = True
+
 
 # A2C(Advantage Actor-Critic) agent
 class A2CAgent:
@@ -47,11 +48,12 @@ class A2CAgent:
         if self.load_model1:
             self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Actor_Rev_180112.h5")
             self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Critic_Rev_180112.h5")
+
         if self.load_model2:
             self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
             self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
 
-
+            
     # approximate policy and value using Neural Network
     # actor: state is input and probability of each action is output of model
     def build_actor(self):
