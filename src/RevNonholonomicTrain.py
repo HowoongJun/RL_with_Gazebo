@@ -23,7 +23,7 @@ boundaryRadius = 0.85
 obstacleRadius = 0.2
 agentRadius = 0.17
 linearUnit = 1
-angularUnit = 10
+angularUnit = 5
 
 # A2C(Advantage Actor-Critic) agent
 class A2CAgent:
@@ -37,8 +37,10 @@ class A2CAgent:
 
         # These are hyper parameters for the Policy Gradient
         self.discount_factor = 0.99
-        self.actor_lr = 0.00002
-        self.critic_lr = 0.00005
+        # self.actor_lr = 0.00002
+        # self.critic_lr = 0.00005
+        self.actor_lr = 0.0001
+        self.critic_lr = 0.0001
 
         # create model for policy network
         self.actor = self.build_actor()
@@ -183,17 +185,18 @@ def main():
             angularZ = 0
             [linearX, angularZ] = takeAction(action)
 
-            twistMainRobot_msg.linear.x = linearX
-            twistMainRobot_msg.angular.z = angularZ
-            # twistMainRobot_msg.angular.z = 1
+            # twistMainRobot_msg.linear.x = linearX
+            # twistMainRobot_msg.angular.z = angularZ
+            twistMainRobot_msg.linear.x = 0
+            twistMainRobot_msg.angular.z = 0.5
             # rospy.Subscriber('gazebo/ModelStates', Pose, subCallback)
             model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
             object_coordinates = model_coordinates("simple_create", "")
             # rospy.logwarn("%s", object_coordinates.twist.angular.z)
 
             collisionFlag = 0
-            next_state = stateGenerator([posObstRobot_msg.pose.position.x, posObstRobot_msg.pose.position.y], [object_coordinates.pose.position.x, object_coordinates.pose.position.y], object_coordinates.pose.orientation.w * 180)
-            # rospy.logwarn("%f, %f, %f", next_state[0][0], next_state[0][1], next_state[0][2])
+            next_state = stateGenerator([posObstRobot_msg.pose.position.x, posObstRobot_msg.pose.position.y], [object_coordinates.pose.position.x, object_coordinates.pose.position.y], object_coordinates.pose.orientation.w) 
+            rospy.logwarn("%s", next_state)
             # rospy.logwarn("%f", object_coordinates.pose.orientation.w * 180)
             if math.sqrt((object_coordinates.pose.position.x - initPosMainRobot[0])**2 + (object_coordinates.pose.position.y - initPosMainRobot[1])**2) >= boundaryRadius:
                 rospy.logwarn("No Collision!")
@@ -240,7 +243,7 @@ def main():
         if e % 60 == 0:
             agent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Nonholonomic_Rev.h5")
             agent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Nonholonomic_Rev.h5")
-        rospy.logwarn("Reward: %d", score)
+        rospy.logwarn("Reward: %f", score)
     # while not rospy.is_shutdown():
     #     posMainRobot_msg.pose.position.x += 0.01
     #     posMainRobot_msg.pose.position.y += 0.01
