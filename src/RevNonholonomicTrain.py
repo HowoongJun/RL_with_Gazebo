@@ -20,12 +20,13 @@ import time
 obsNumber = 1
 state_size = obsNumber * 3 + 1
 action_size = 3
-num_episodes = 1000
+num_episodes = 30000
 boundaryRadius = 0.6
 obstacleRadius = 0.2
 agentRadius = 0.17
 linearUnit = 1
 angularUnit = 5
+roundNo = 3
 
 # A2C(Advantage Actor-Critic) agent
 class A2CAgent:
@@ -39,8 +40,8 @@ class A2CAgent:
 
         # These are hyper parameters for the Policy Gradient
         self.discount_factor = 0.99
-        self.actor_lr = 0.00002
-        self.critic_lr = 0.00005
+        self.actor_lr = 0.002
+        self.critic_lr = 0.005
 
         # create model for policy network
         self.actor = self.build_actor()
@@ -53,8 +54,11 @@ class A2CAgent:
     # actor: state is input and probability of each action is output of model
     def build_actor(self):
         actor = Sequential()
-        actor.add(Dense(1024, input_dim=self.state_size, activation='relu', kernel_initializer='glorot_normal'))
-        actor.add(Dense(512, activation='relu', kernel_initializer='glorot_normal'))
+        actor.add(Dense(8, input_dim=self.state_size, activation='relu', kernel_initializer='glorot_normal'))
+        # actor.add(Dense(512, activation='relu', kernel_initializer='glorot_normal'))
+        # actor.add(Dense(256, activation='relu', kernel_initializer='glorot_normal'))
+        # actor.add(Dense(128, activation='relu', kernel_initializer='glorot_normal'))
+        # actor.add(Dense(64, activation='relu', kernel_initializer='glorot_normal'))
         actor.add(Dense(self.action_size, activation='softmax', kernel_initializer='glorot_normal'))
         actor.summary()
         # See note regarding crossentropy in cartpole_reinforce.py
@@ -64,8 +68,11 @@ class A2CAgent:
     # critic: state is input and value of state is output of model
     def build_critic(self):
         critic = Sequential()
-        critic.add(Dense(1024, input_dim=self.state_size, activation='relu', kernel_initializer='glorot_normal'))
-        critic.add(Dense(512, activation='relu', kernel_initializer='glorot_normal'))
+        critic.add(Dense(8, input_dim=self.state_size, activation='relu', kernel_initializer='glorot_normal'))
+        # critic.add(Dense(512, activation='relu', kernel_initializer='glorot_normal'))
+        # critic.add(Dense(256, activation='relu', kernel_initializer='glorot_normal'))
+        # critic.add(Dense(128, activation='relu', kernel_initializer='glorot_normal'))
+        # critic.add(Dense(64, activation='relu', kernel_initializer='glorot_normal'))
         critic.add(Dense(self.value_size, activation='linear', kernel_initializer='glorot_normal'))
         critic.summary()
         critic.compile(loss="mse", optimizer=Adam(lr=self.critic_lr))
@@ -96,16 +103,17 @@ class A2CAgent:
 
 def stateGenerator(obsPosition, agtPosition, orientation, timeElapsed):
     returnSum = []
-    # returnSum = returnSum + [obsPosition[0] - agtPosition[0], obsPosition[1] - agtPosition[1]]
-    returnSum = returnSum + [obsPosition[1] - agtPosition[1], obsPosition[0] - agtPosition[0]]
+    returnSum = returnSum + [obsPosition[0] - agtPosition[0], obsPosition[1] - agtPosition[1]]
+    # returnSum = returnSum + [obsPosition[1] - agtPosition[1], obsPosition[0] - agtPosition[0]]
     returnSum = returnSum + [orientation]
     returnSum = returnSum + [timeElapsed]
+    
     returnSum = np.reshape(returnSum, [1, state_size])
     return returnSum
 
 def takeAction(action):
     # linearX = 0
-    linearX = 1
+    linearX = 0.5
     angularZ = 0
     if action == 0:
         angularZ = 0
@@ -139,7 +147,8 @@ def main():
 
     obsAngleIdx= 0
     circleFlag = False
-    initRandom = 270#random.randrange(0, 360)
+    # initRandom = random.randrange(-90, 90)
+    initRandom = -45
     initPosMainRobot = [0, 0]
 
     twistMainRobot_pub = rospy.Publisher('simple_create/cmd_vel', Twist, queue_size=10)
@@ -182,8 +191,8 @@ def main():
         rospy.logwarn(datetime.datetime.now().strftime('%H:%M:%S'))
         start = time.time()
         posMainRobot_pub.publish(posMainRobot_msg)
-        
-        state = stateGenerator([posObstRobot_msg.pose.position.x, posObstRobot_msg.pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], 0, 0)
+
+        state = stateGenerator([round(posObstRobot_msg.pose.position.x, roundNo), round(posObstRobot_msg.pose.position.y, roundNo)], [round(posMainRobot_msg.pose.position.x, roundNo), round(posMainRobot_msg.pose.position.y, roundNo)], 0, 0)
         while not done:
             action = agent.get_action(state)
             linearX = 0
@@ -191,21 +200,23 @@ def main():
             [linearX, angularZ] = takeAction(action)
             twistMainRobot_msg.linear.x = linearX
             twistMainRobot_msg.angular.z = angularZ
-            # twistMainRobot_msg.linear.x = 1
-            # twistMainRobot_msg.angular.z = 0
+
+            twistMainRobot_pub.publish(twistMainRobot_msg)
+            posObstRobot_pub.publish(posObstRobot_msg)
+            
             model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
             object_coordinates = model_coordinates("simple_create", "")
             quaternion = (object_coordinates.pose.orientation.x, object_coordinates.pose.orientation.y, object_coordinates.pose.orientation.z, object_coordinates.pose.orientation.w)
             euler = euler_from_quaternion(quaternion)
-            yaw = euler[2]
+            yaw = round(euler[2],roundNo)
             # rospy.logwarn("%s, %s", [posObstRobot_msg.pose.position.x, posObstRobot_msg.pose.position.y], [object_coordinates.pose.position.x, object_coordinates.pose.position.y])
             finish = time.time()
-            elapsed = finish - start
+            elapsed = round(finish - start, roundNo)
             collisionFlag = 0
-            next_state = stateGenerator([posObstRobot_msg.pose.position.x, posObstRobot_msg.pose.position.y], [object_coordinates.pose.position.x, object_coordinates.pose.position.y], yaw, elapsed) 
+            next_state = stateGenerator([round(posObstRobot_msg.pose.position.x, roundNo), round(posObstRobot_msg.pose.position.y, roundNo)], [round(object_coordinates.pose.position.x, roundNo), round(object_coordinates.pose.position.y, roundNo)], yaw, elapsed) 
             # rospy.logwarn("%s", next_state)
             if math.sqrt((object_coordinates.pose.position.x - initPosMainRobot[0])**2 + (object_coordinates.pose.position.y - initPosMainRobot[1])**2) >= boundaryRadius:
-                rospy.logwarn("No Collision!")
+                rospy.logerr("No Collision!")
                 collisionFlag = 1
                 done = True
             if math.sqrt((object_coordinates.pose.position.x - posObstRobot_msg.pose.position.x)**2 + (object_coordinates.pose.position.y - posObstRobot_msg.pose.position.y)**2) <= obstacleRadius + agentRadius:
@@ -213,7 +224,7 @@ def main():
                 collisionFlag = -1
                 done = True
             if elapsed >= 10:
-                rospy.logwarn("Time Exceeded!")
+                rospy.logerr("Time Exceeded!")
                 done = True
                 collisionFlag = -2
             
@@ -234,31 +245,34 @@ def main():
             state = next_state
 
             if done:
-                if collisionFlag == -1:
-                    initRandom = random.randrange(0, 180) - 90
-                    rospy.logwarn("Obstacle Location Changed!")
-                # if obsAngleIdx >= 180:
-                    # circleFlag = False
+                # if collisionFlag == -1:
+                    # initRandom = random.randrange(0, 180) - 90
+                    # rospy.logwarn("Obstacle Location Changed!")
+                if obsAngleIdx >= 90:
+                    circleFlag = True
                     # initRandom = random.randrange(-90, 90)
-                # elif obsAngleIdx < 0:
-                    # circleFlag = True
+                    # initRandom = 90
+                elif obsAngleIdx < 0:
+                    circleFlag = False
                     # initRandom = random.randrange(-90, 90)
-                # if circleFlag == False:
-                #     obsAngleIdx += 2
-                # else:
-                #     obsAngleIdx -= 2
+                    # initRandom = 90
+                if circleFlag == False:
+                    if collisionFlag == -1:
+                        obsAngleIdx += 2
+                else:
+                    if collisionFlag == -1:
+                        obsAngleIdx -= 2
                 
-                # obsAngle = (obsAngleIdx + initRandom) * math.pi/180
-                obsAngle = initRandom * math.pi/180
+                obsAngle = (obsAngleIdx + initRandom) * math.pi/180
+                # obsAngle = initRandom * math.pi/180
                 # obsAngle = -90 * math.pi/180
                 posObstRobot_msg.pose.position.x = initPosMainRobot[0] + boundaryRadius * math.cos(obsAngle)
                 posObstRobot_msg.pose.position.y = initPosMainRobot[1] + boundaryRadius * math.sin(obsAngle)
-            twistMainRobot_pub.publish(twistMainRobot_msg)
-            posObstRobot_pub.publish(posObstRobot_msg)
+
 
             rate.sleep()
 
-        if e % 60 == 0:
+        if e % 100 == 0:
             agent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Nonholonomic_Rev.h5")
             agent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Nonholonomic_Rev.h5")
         rospy.logwarn("Reward: %f", score)
