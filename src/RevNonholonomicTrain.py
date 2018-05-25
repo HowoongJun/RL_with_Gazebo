@@ -11,6 +11,7 @@ import pylab
 from keras.layers import Dense
 from keras.models import Sequential
 from keras.optimizers import Adam
+from keras.optimizers import SGD
 from tf.transformations import euler_from_quaternion
 import math
 import datetime
@@ -19,8 +20,8 @@ import time
 # Environment Setting
 obsNumber = 1
 state_size = obsNumber * 3 + 1
-action_size = 3
-num_episodes = 30000
+action_size = 5
+num_episodes = 100000
 boundaryRadius = 0.6
 obstacleRadius = 0.2
 agentRadius = 0.17
@@ -40,8 +41,8 @@ class A2CAgent:
 
         # These are hyper parameters for the Policy Gradient
         self.discount_factor = 0.99
-        self.actor_lr = 0.002
-        self.critic_lr = 0.005
+        self.actor_lr = 0.00002
+        self.critic_lr = 0.00005
 
         # create model for policy network
         self.actor = self.build_actor()
@@ -54,7 +55,7 @@ class A2CAgent:
     # actor: state is input and probability of each action is output of model
     def build_actor(self):
         actor = Sequential()
-        actor.add(Dense(8, input_dim=self.state_size, activation='relu', kernel_initializer='glorot_normal'))
+        actor.add(Dense(64, input_dim=self.state_size, activation='relu', kernel_initializer='glorot_normal'))
         # actor.add(Dense(512, activation='relu', kernel_initializer='glorot_normal'))
         # actor.add(Dense(256, activation='relu', kernel_initializer='glorot_normal'))
         # actor.add(Dense(128, activation='relu', kernel_initializer='glorot_normal'))
@@ -62,20 +63,22 @@ class A2CAgent:
         actor.add(Dense(self.action_size, activation='softmax', kernel_initializer='glorot_normal'))
         actor.summary()
         # See note regarding crossentropy in cartpole_reinforce.py
-        actor.compile(loss='categorical_crossentropy', optimizer=Adam(lr=self.actor_lr))
+        # actor.compile(loss='categorical_crossentropy', optimizer=Adam(lr=self.actor_lr))
+        actor.compile(loss='categorical_crossentropy', optimizer = SGD(lr=self.actor_lr))
         return actor
 
     # critic: state is input and value of state is output of model
     def build_critic(self):
         critic = Sequential()
-        critic.add(Dense(8, input_dim=self.state_size, activation='relu', kernel_initializer='glorot_normal'))
+        critic.add(Dense(64, input_dim=self.state_size, activation='relu', kernel_initializer='glorot_normal'))
         # critic.add(Dense(512, activation='relu', kernel_initializer='glorot_normal'))
         # critic.add(Dense(256, activation='relu', kernel_initializer='glorot_normal'))
         # critic.add(Dense(128, activation='relu', kernel_initializer='glorot_normal'))
         # critic.add(Dense(64, activation='relu', kernel_initializer='glorot_normal'))
         critic.add(Dense(self.value_size, activation='linear', kernel_initializer='glorot_normal'))
         critic.summary()
-        critic.compile(loss="mse", optimizer=Adam(lr=self.critic_lr))
+        # critic.compile(loss="mse", optimizer=Adam(lr=self.critic_lr))
+        critic.compile(loss="mse", optimizer = SGD(lr=self.critic_lr))
         return critic
 
     # using the output of policy network, pick action stochastically
@@ -112,44 +115,42 @@ def stateGenerator(obsPosition, agtPosition, orientation, timeElapsed):
     return returnSum
 
 def takeAction(action):
-    # linearX = 0
-    linearX = 0.5
+    linearX = 0
+    # linearX = 1
     angularZ = 0
-    if action == 0:
-        angularZ = 0
-    elif action == 1:
-        angularZ = angularUnit
-    elif action == 2:
-        angularZ = -angularUnit
     # if action == 0:
-    #     linearX = 0
     #     angularZ = 0
     # elif action == 1:
-    #     linearX = linearUnit
-    #     angularZ = 0
+    #     angularZ = angularUnit
     # elif action == 2:
-    #     linearX = 0
-    #     angularZ = angularUnit
-    # elif action == 3:
-    #     linearX = linearUnit
-    #     angularZ = angularUnit
-    # elif action == 4:
-    #     linearX = 0
     #     angularZ = -angularUnit
-    # elif action == 5:
-    #     linearX = linearUnit
-    #     angularZ = -angularUnit
+    if action == 0:
+        linearX = linearUnit
+        angularZ = 0
+    elif action == 1:
+        linearX = 0
+        angularZ = angularUnit
+    elif action == 2:
+        linearX = linearUnit
+        angularZ = angularUnit
+    elif action == 3:
+        linearX = 0
+        angularZ = -angularUnit
+    elif action == 4:
+        linearX = linearUnit
+        angularZ = -angularUnit
         
     return [linearX, angularZ]
 
 def main():
     agent = A2CAgent(state_size, action_size)
-
     obsAngleIdx= 0
     circleFlag = False
     # initRandom = random.randrange(-90, 90)
-    initRandom = -45
+    initRandom = -60
     initPosMainRobot = [0, 0]
+    episodeNo = []
+    scorePlot = []
 
     twistMainRobot_pub = rospy.Publisher('simple_create/cmd_vel', Twist, queue_size=10)
     posMainRobot_pub = rospy.Publisher('gazebo/set_model_state', ModelState, queue_size = 10)
@@ -183,7 +184,7 @@ def main():
         done = False
         score = 0
         reward = 0
-        
+
         posMainRobot_msg.pose.position.x = initPosMainRobot[0]
         posMainRobot_msg.pose.position.y = initPosMainRobot[1]
         posMainRobot_msg.pose.position.z = 0
@@ -223,7 +224,7 @@ def main():
                 rospy.logwarn("Collision!")
                 collisionFlag = -1
                 done = True
-            if elapsed >= 10:
+            if elapsed >= 20:
                 rospy.logerr("Time Exceeded!")
                 done = True
                 collisionFlag = -2
@@ -234,7 +235,7 @@ def main():
             else:
                 if collisionFlag == 1:
                     angReward = -180/math.pi * abs(math.atan2(object_coordinates.pose.position.y, object_coordinates.pose.position.x) - math.atan2(posObstRobot_msg.pose.position.y, posObstRobot_msg.pose.position.x))
-                    reward = -500 + angReward
+                    reward = -500 + round(angReward, 1)
                 elif collisionFlag == -1:
                     reward = 1000
                 elif collisionFlag == -2:
@@ -243,12 +244,12 @@ def main():
 
             score += reward
             state = next_state
-
+            
             if done:
                 # if collisionFlag == -1:
                     # initRandom = random.randrange(0, 180) - 90
                     # rospy.logwarn("Obstacle Location Changed!")
-                if obsAngleIdx >= 90:
+                if obsAngleIdx >= 120:
                     circleFlag = True
                     # initRandom = random.randrange(-90, 90)
                     # initRandom = 90
@@ -269,12 +270,18 @@ def main():
                 posObstRobot_msg.pose.position.x = initPosMainRobot[0] + boundaryRadius * math.cos(obsAngle)
                 posObstRobot_msg.pose.position.y = initPosMainRobot[1] + boundaryRadius * math.sin(obsAngle)
 
+                episodeNo = episodeNo + [e]
+                scorePlot = scorePlot + [score]
+                plt.plot(episodeNo, scorePlot)
 
             rate.sleep()
 
         if e % 100 == 0:
             agent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Nonholonomic_Rev.h5")
             agent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Nonholonomic_Rev.h5")
+            plt.savefig("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/RewardPlot.png", dpi=300)
+            rospy.logwarn("Data Saved!")
+        
         rospy.logwarn("Reward: %f", score)
     # while not rospy.is_shutdown():
     #     posMainRobot_msg.pose.position.x += 0.01

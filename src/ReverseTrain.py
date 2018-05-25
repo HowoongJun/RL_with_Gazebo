@@ -16,7 +16,7 @@ import datetime
 obsNumber = 1
 state_size = obsNumber * 2
 action_size = 9
-num_episodes = 181
+num_episodes = 1801
 boundaryRadius = 0.85
 obstacleRadius = 0.2
 agentRadius = 0.17
