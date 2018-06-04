@@ -15,7 +15,7 @@ import datetime
 # Environment Setting
 obsNumber = 1
 state_size = obsNumber * 2
-action_size = 9
+action_size = 8
 num_episodes = 1801
 boundaryRadius = 0.85
 obstacleRadius = 0.2
@@ -102,8 +102,7 @@ def takeAction(action):
         xAction = movingUnit
         yAction = movingUnit
     elif action == 2:
-        xAction = movingUnit
-        yAction = -movingUnit       
+        yAction = movingUnit
     elif action == 3:
         xAction = -movingUnit
         yAction = movingUnit
@@ -115,10 +114,11 @@ def takeAction(action):
     elif action == 6:
         yAction = -movingUnit
     elif action == 7:
-        yAction = movingUnit
-    elif action == 8:
-        xAction = 0
-        yAction = 0
+        xAction = movingUnit
+        yAction = -movingUnit
+    # elif action == 8:
+    #     xAction = 0
+    #     yAction = 0
         
     return [xAction, yAction]
 

@@ -2,6 +2,7 @@
 import rospy
 from geometry_msgs.msg import Twist
 from gazebo_msgs.msg import ModelState
+from gazebo_msgs.srv import GetModelState
 import numpy as np
 import sys, random
 import matplotlib.pyplot as plt
@@ -9,6 +10,7 @@ import pylab
 from keras.layers import Dense
 from keras.models import Sequential
 from keras.optimizers import Adam
+from tf.transformations import euler_from_quaternion
 import math
 import datetime
 
@@ -18,9 +20,8 @@ obstacleRadius = 0.18
 agentRadius = 0.18
 obsNumber = 10
 state_size = 2
-action_size = 9
+action_size = 8
 boundaryRadius = 0.85
-movingUnit = 0.017
 goalPos = [5, 5]
 moveObstacles = True
 
@@ -138,44 +139,50 @@ def goalFinder(agtPos):
     tmpGoal[1] = agtPos[1] + boundaryRadius * math.sin(goalAngle)
     return tmpGoal
 
-def takeAction(action):
-    xAction = 0
-    yAction = 0
-    if action == 0:
-        xAction = movingUnit
-    elif action == 1:
-        xAction = movingUnit
-        yAction = movingUnit
-    elif action == 2:
-        xAction = movingUnit
-        yAction = -movingUnit       
-    elif action == 3:
-        xAction = -movingUnit
-        yAction = movingUnit
-    elif action == 4:
-        xAction = -movingUnit
-    elif action == 5:
-        xAction = -movingUnit
-        yAction = -movingUnit
-    elif action == 6:
-        yAction = -movingUnit
-    elif action == 7:
-        yAction = movingUnit
-    elif action == 8:
-        xAction = 0
-        yAction = 0
-        
-    return [xAction, yAction]
+def takeAction(robotHeading, desiredHeading):
+    linearX = 0
+    angularZ = 0
+    if robotHeading == desiredHeading:
+        linearX = 1
+        angularZ = 0
+    else:
+        linearX = 0.5
+        angularZ = desiredHeading - robotHeading
+        if angularZ > 4:
+            angularZ = angularZ - 8
+        elif angularZ < -4:
+            angularZ = angularZ + 8
+    return [linearX, angularZ]
+
+def findHeading(robotYaw):
+    robotAction = 8
+    if robotYaw < math.pi / 8 and robotYaw > -math.pi / 8:
+        robotAction = 0
+    elif robotYaw < -math.pi / 8 and robotYaw > -3 * math.pi / 8:
+        robotAction = 1
+    elif robotYaw < -3 * math.pi / 8 and robotYaw > -5 * math.pi / 8:
+        robotAction = 2
+    elif robotYaw < -5 * math.pi / 8 and robotYaw > -7 * math.pi / 8:
+        robotAction = 3
+    elif robotYaw < -7 * math.pi / 8 or robotYaw > 7 * math.pi / 8:
+        robotAction = 4
+    elif robotYaw < 7 * math.pi / 8 and robotYaw > 5 * math.pi / 8:
+        robotAction = 5
+    elif robotYaw < 5 * math.pi / 8 and robotYaw > 3 * math.pi / 8:
+        robotAction = 6
+    elif robotYaw < 3 * math.pi / 8 and robotYaw > math.pi / 8:
+        robotAction = 7
+    return robotAction
 
 def main():
     agent = A2CAgent(state_size, action_size)
-    macroAgent = A2CAgent(state_size, action_size)
+    # macroAgent = A2CAgent(state_size, action_size)
 
     obsAngleIdx= 0
     initPosMainRobot = [0, 0]
     rList = []
 
-    # twistMainRobot_pub = rospy.Publisher('simple_create/cmd_vel', Twist, queue_size=10)
+    twistMainRobot_pub = rospy.Publisher('simple_create/cmd_vel', Twist, queue_size=10)
     # twistObstRobot_pub = rospy.Publisher('simple_create2/cmd_vel', Twist, queue_size=10)
     
     posObstRobot_pub = []
@@ -202,14 +209,14 @@ def main():
     goalPos_msg.pose.position.z = 0
         # twistObstRobot_pub = twistObstRobot_pub + [rospy.Publisher('simple_create' + str(i+2) + '/cmd_vel', Twist, queue_size=10)]
         # twistObstRobot_msg.append(Twist())
-    # twistMainRobot_msg = Twist()
+    twistMainRobot_msg = Twist()
     # twistObstRobot_msg = Twist()
-    # twistMainRobot_msg.linear.x = 0
-    # twistMainRobot_msg.linear.y = 0
-    # twistMainRobot_msg.linear.z = 0
-    # twistMainRobot_msg.angular.x = 0
-    # twistMainRobot_msg.angular.y = 0
-    # twistMainRobot_msg.angular.z = 0
+    twistMainRobot_msg.linear.x = 0
+    twistMainRobot_msg.linear.y = 0
+    twistMainRobot_msg.linear.z = 0
+    twistMainRobot_msg.angular.x = 0
+    twistMainRobot_msg.angular.y = 0
+    twistMainRobot_msg.angular.z = 0
 
     rospy.init_node('circler', anonymous=True)
     rate = rospy.Rate(50) #hz
@@ -226,8 +233,8 @@ def main():
         while not done:
             [rangeObsNumber, rangeObsPos, minIndex] = rangeFinder(posObstRobot_msg, initPosMainRobot)
 
-            macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
-            macroPolicy = macroAgent.get_action(macroState)
+            # macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
+            # macroPolicy = macroAgent.get_action(macroState)
             # rospy.logwarn(macroPolicy)
             tmpAction = []
             for i in range(0, rangeObsNumber):
@@ -263,21 +270,27 @@ def main():
             tmpAction = tmpAction * np.asarray(policyArr)
 
             # Must be checked - Applying macro action
-            if rangeObsNumber != 0:
-                tmpAction = tmpAction * np.asarray(1 - macroPolicy)
+            # if rangeObsNumber != 0:
+                # tmpAction = tmpAction * np.asarray(1 - macroPolicy)
             # rospy.logwarn(macroPolicy)
             tmpAction = tmpAction / np.sum(tmpAction)
             action = np.random.choice(action_size, 1, p = tmpAction)[0]
 
-            xMove = 0
-            yMove = 0
-            [xMove, yMove] = takeAction(action)
+            model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
+            object_coordinates = model_coordinates("simple_create", "")
+            quaternion = (object_coordinates.pose.orientation.x, object_coordinates.pose.orientation.y, object_coordinates.pose.orientation.z, object_coordinates.pose.orientation.w)
+            euler = euler_from_quaternion(quaternion)
+            yaw = euler[2]
+            robotHeading = findHeading(yaw)
+            linearX = 0
+            angularZ = 0
+            [linearX, angularZ] = takeAction(robotHeading, action)
 
-            posMainRobot_msg.pose.position.x += xMove
-            posMainRobot_msg.pose.position.y += yMove
+            twistMainRobot_msg.linear.x = linearX
+            twistMainRobot_msg.angular.z = angularZ
 
             collisionFlag = 0
-            next_macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
+            # next_macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
             initPosMainRobot = [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y]
             if(math.sqrt((posMainRobot_msg.pose.position.x - goalPos[0])**2 + (posMainRobot_msg.pose.position.y - goalPos[1])**2) <= agentRadius):
                 rospy.logwarn("Goal Reached!")
@@ -306,9 +319,9 @@ def main():
             
             # macroAction = np.random.choice(action_size, 1, p=macroPolicy)
             # macroAgent.train_model(macroState, macroAction, reward, next_macroState, done)
-            macroAgent.train_model(macroState, action, reward, next_macroState, done)
+            # macroAgent.train_model(macroState, action, reward, next_macroState, done)
             
-            macroState = next_macroState
+            # macroState = next_macroState
 
             if done:
                 initPosMainRobot = [0, 0]
@@ -327,9 +340,9 @@ def main():
                 # twistObstRobot_pub[i].publish(twistObstRobot_msg[i])
 
             rate.sleep()
-        if e % 50 == 0:
-            macroAgent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
-            macroAgent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
+        # if e % 50 == 0:
+            # macroAgent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
+            # macroAgent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
     rospy.logwarn("Percent of successful episodes: %f %%", 100.0 * sum(rList)/num_episodes)
 
 if __name__ == '__main__':

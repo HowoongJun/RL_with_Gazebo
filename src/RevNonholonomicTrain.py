@@ -20,7 +20,7 @@ import time
 obsNumber = 1
 state_size = obsNumber * 3 + 1
 action_size = 3
-num_episodes = 100000
+num_episodes = 100001
 boundaryRadius = 0.6
 obstacleRadius = 0.2
 agentRadius = 0.17
@@ -40,8 +40,8 @@ class A2CAgent:
 
         # These are hyper parameters for the Policy Gradient
         self.discount_factor = 0.99
-        self.actor_lr = 0.000001
-        self.critic_lr = 0.000001
+        self.actor_lr = 0.00001
+        self.critic_lr = 0.00001
 
         # create model for policy network
         self.actor = self.build_actor()
@@ -196,8 +196,8 @@ def main():
         while not done:
             action = agent.get_action(state)
             linearX = 0
-            angularZ = 0
-            [linearX, angularZ] = takeAction(action)
+            angularZ = 1
+            # [linearX, angularZ] = takeAction(action)
             twistMainRobot_msg.linear.x = linearX
             twistMainRobot_msg.angular.z = angularZ
 
@@ -209,6 +209,7 @@ def main():
             quaternion = (object_coordinates.pose.orientation.x, object_coordinates.pose.orientation.y, object_coordinates.pose.orientation.z, object_coordinates.pose.orientation.w)
             euler = euler_from_quaternion(quaternion)
             yaw = round(euler[2],roundNo)
+            # rospy.logwarn(yaw)
             # rospy.logwarn("%s, %s", [posObstRobot_msg.pose.position.x, posObstRobot_msg.pose.position.y], [object_coordinates.pose.position.x, object_coordinates.pose.position.y])
             finish = time.time()
             elapsed = round(finish - start, roundNo)
@@ -276,10 +277,10 @@ def main():
             agent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Nonholonomic_Rev.h5")
             agent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Nonholonomic_Rev.h5")
             
-            episodeNo = episodeNo + [e]
-            scorePlot = scorePlot + [score]
-            plt.plot(episodeNo, scorePlot, linewidth=0.5)
-            plt.savefig("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/RewardPlot.png", dpi=300)
+            # episodeNo = episodeNo + [e]
+            # scorePlot = scorePlot + [score]
+            # plt.plot(episodeNo, scorePlot, linewidth=0.5)
+            # plt.savefig("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/RewardPlot.png", dpi=300)
 
             rospy.logwarn("Data Saved!")
         
