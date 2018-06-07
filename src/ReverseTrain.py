@@ -130,22 +130,11 @@ def main():
     initRandom = random.randrange(0, 360)
     initPosMainRobot = [0, 0]
 
-    # twistMainRobot_pub = rospy.Publisher('simple_create/cmd_vel', Twist, queue_size=10)
-    # twistObstRobot_pub = rospy.Publisher('simple_create2/cmd_vel', Twist, queue_size=10)
     posMainRobot_pub = rospy.Publisher('gazebo/set_model_state', ModelState, queue_size = 10)
     posObstRobot_pub = rospy.Publisher('gazebo/set_model_state', ModelState, queue_size = 10)
 
-    # twistMainRobot_msg = Twist()
-    # twistObstRobot_msg = Twist()
     posMainRobot_msg = ModelState()
     posObstRobot_msg = ModelState()
-
-    # twistMainRobot_msg.linear.x = 0
-    # twistMainRobot_msg.linear.y = 0
-    # twistMainRobot_msg.linear.z = 0
-    # twistMainRobot_msg.angular.x = 0
-    # twistMainRobot_msg.angular.y = 0
-    # twistMainRobot_msg.angular.z = 0
 
     posMainRobot_msg.model_name = "simple_create"
     posObstRobot_msg.model_name = "simple_create2"
@@ -184,7 +173,7 @@ def main():
             next_state = stateGenerator([posObstRobot_msg.pose.position.x, posObstRobot_msg.pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y])
 
             if(math.sqrt((posMainRobot_msg.pose.position.x - initPosMainRobot[0])**2 + (posMainRobot_msg.pose.position.y - initPosMainRobot[1])**2) >= boundaryRadius):
-                rospy.logwarn("No Collision!")
+                rospy.logerr("No Collision!")
                 collisionFlag = 1
                 done = True
             if math.sqrt((posMainRobot_msg.pose.position.x - posObstRobot_msg.pose.position.x)**2 + (posMainRobot_msg.pose.position.y - posObstRobot_msg.pose.position.y)**2) <= obstacleRadius + agentRadius:

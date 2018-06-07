@@ -29,7 +29,7 @@ moveObstacles = True
 class A2CAgent:
     def __init__(self, state_size, action_size):
         self.load_model1 = True
-        self.load_model2 = True
+        # self.load_model2 = True
         
         # get size of state and action
         self.state_size = state_size
@@ -46,14 +46,14 @@ class A2CAgent:
         self.critic = self.build_critic()
 
         if self.load_model1:
-            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Rev.h5")
-            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Rev.h5")
-            # self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Actor_Rev_180112.h5")
-            # self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Critic_Rev_180112.h5")
+            # self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Rev.h5")
+            # self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Rev.h5")
+            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Actor_Rev_180112.h5")
+            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Critic_Rev_180112.h5")
 
-        if self.load_model2:
-            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
-            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
+        # if self.load_model2:
+        #     self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
+        #     self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
 
             
     # approximate policy and value using Neural Network
@@ -141,14 +141,19 @@ def goalFinder(agtPos):
 def takeAction(action):
     xAction = 0
     yAction = 0
+
+    if action == 2:
+        action = 7
+    elif action == 7:
+        action = 2
+
     if action == 0:
         xAction = movingUnit
     elif action == 1:
         xAction = movingUnit
         yAction = movingUnit
     elif action == 2:
-        xAction = movingUnit
-        yAction = -movingUnit       
+        yAction = movingUnit
     elif action == 3:
         xAction = -movingUnit
         yAction = movingUnit
@@ -160,7 +165,8 @@ def takeAction(action):
     elif action == 6:
         yAction = -movingUnit
     elif action == 7:
-        yAction = movingUnit
+        xAction = movingUnit
+        yAction = -movingUnit 
     elif action == 8:
         xAction = 0
         yAction = 0
@@ -169,7 +175,7 @@ def takeAction(action):
 
 def main():
     agent = A2CAgent(state_size, action_size)
-    macroAgent = A2CAgent(state_size, action_size)
+    # macroAgent = A2CAgent(state_size, action_size)
 
     obsAngleIdx= 0
     initPosMainRobot = [0, 0]
@@ -226,8 +232,8 @@ def main():
         while not done:
             [rangeObsNumber, rangeObsPos, minIndex] = rangeFinder(posObstRobot_msg, initPosMainRobot)
 
-            macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
-            macroPolicy = macroAgent.get_action(macroState)
+            # macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
+            # macroPolicy = macroAgent.get_action(macroState)
             # rospy.logwarn(macroPolicy)
             tmpAction = []
             for i in range(0, rangeObsNumber):
@@ -237,15 +243,17 @@ def main():
                     tmpAction = (1 - policyArr)
                 else:
                     tmpAction = tmpAction * (1 - policyArr)
+
+            # rospy.logwarn(tmpAction)
             if tmpAction != []:
+                tmpArgMax = np.argmax(tmpAction)
                 for j in range(0,action_size):
-                    if tmpAction[j] > 0.999:
+                    if tmpAction[j] > 0.97:
                         tmpAction[j] = 1
-                    elif tmpAction[j] > 0.995:
-                        tmpAction[j] = 0.1
+                    # elif tmpAction[j] > 0.995:
+                        # tmpAction[j] = 0.1
                     else:
                         tmpAction[j] = 0
-                tmpArgMax = np.argmax(tmpAction)
 
             if rangeObsNumber == 0:
                 tmpAction = [1.0/action_size for _ in range(0,action_size)]
@@ -257,17 +265,22 @@ def main():
             # rospy.logwarn(tmpAction)
 
             if np.mean(tmpAction) == 0:
-                rospy.logwarn("No Action Selected! Random Action")
-                tmpAction[random.randrange(0, action_size)] = 1
+                # rospy.logwarn("No Action Selected! Random Action")
+                # tmpAction[random.randrange(0, action_size)] = 1
+                tmpAction[tmpArgMax] = 1
 
             tmpAction = tmpAction * np.asarray(policyArr)
+            # rospy.logwarn(tmpAction)
 
             # Must be checked - Applying macro action
-            if rangeObsNumber != 0:
-                tmpAction = tmpAction * np.asarray(1 - macroPolicy)
+            # if rangeObsNumber != 0:
+                # tmpAction = tmpAction * np.asarray(1 - macroPolicy)
             # rospy.logwarn(macroPolicy)
             tmpAction = tmpAction / np.sum(tmpAction)
             action = np.random.choice(action_size, 1, p = tmpAction)[0]
+            # rospy.logwarn(tmpAction)
+            # rospy.logwarn(action)
+            # action = np.argmax(tmpAction)
 
             xMove = 0
             yMove = 0
@@ -277,7 +290,7 @@ def main():
             posMainRobot_msg.pose.position.y += yMove
 
             collisionFlag = 0
-            next_macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
+            # next_macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
             initPosMainRobot = [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y]
             if(math.sqrt((posMainRobot_msg.pose.position.x - goalPos[0])**2 + (posMainRobot_msg.pose.position.y - goalPos[1])**2) <= agentRadius):
                 rospy.logwarn("Goal Reached!")
@@ -291,7 +304,7 @@ def main():
                     # twistObstRobot_msg[i].angular.z = random.randrange(-1, 2)
                 if math.sqrt((posMainRobot_msg.pose.position.x - posObstRobot_msg[i].pose.position.x)**2 + (posMainRobot_msg.pose.position.y - posObstRobot_msg[i].pose.position.y)**2) <= obstacleRadius + agentRadius:
                     rospy.logwarn("Collision!")
-                    collsiionFlag = -1
+                    collisionFlag = -1
                     done = True
 
             if not done:
@@ -306,9 +319,9 @@ def main():
             
             # macroAction = np.random.choice(action_size, 1, p=macroPolicy)
             # macroAgent.train_model(macroState, macroAction, reward, next_macroState, done)
-            macroAgent.train_model(macroState, action, reward, next_macroState, done)
+            # macroAgent.train_model(macroState, action, reward, next_macroState, done)
             
-            macroState = next_macroState
+            # macroState = next_macroState
 
             if done:
                 initPosMainRobot = [0, 0]
@@ -327,9 +340,9 @@ def main():
                 # twistObstRobot_pub[i].publish(twistObstRobot_msg[i])
 
             rate.sleep()
-        if e % 50 == 0:
-            macroAgent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
-            macroAgent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
+        # if e % 50 == 0:
+        #     macroAgent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
+        #     macroAgent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
     rospy.logwarn("Percent of successful episodes: %f %%", 100.0 * sum(rList)/num_episodes)
 
 if __name__ == '__main__':

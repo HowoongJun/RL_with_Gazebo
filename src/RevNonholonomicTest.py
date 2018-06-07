@@ -20,7 +20,7 @@ obstacleRadius = 0.18
 agentRadius = 0.18
 obsNumber = 10
 state_size = 2
-action_size = 8
+action_size = 9
 boundaryRadius = 0.85
 goalPos = [5, 5]
 moveObstacles = True
@@ -30,7 +30,7 @@ moveObstacles = True
 class A2CAgent:
     def __init__(self, state_size, action_size):
         self.load_model1 = True
-        self.load_model2 = True
+        # self.load_model2 = True
         
         # get size of state and action
         self.state_size = state_size
@@ -47,14 +47,14 @@ class A2CAgent:
         self.critic = self.build_critic()
 
         if self.load_model1:
-            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Rev.h5")
-            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Rev.h5")
-            # self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Actor_Rev_180112.h5")
-            # self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Critic_Rev_180112.h5")
+            # self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Rev.h5")
+            # self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Rev.h5")
+            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Actor_Rev_180112.h5")
+            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/backup/Critic_Rev_180112.h5")
 
-        if self.load_model2:
-            self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
-            self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
+        # if self.load_model2:
+            # self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
+            # self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
 
             
     # approximate policy and value using Neural Network
@@ -142,43 +142,55 @@ def goalFinder(agtPos):
 def takeAction(robotHeading, desiredHeading):
     linearX = 0
     angularZ = 0
+    # if robotHeading == 2:
+    #     robotHeading = 7
+    # elif robotHeading == 7:
+    #     robotHeading = 2
+    if desiredHeading == 2:
+        desiredHeading = 7
+    elif desiredHeading == 7:
+        desiredHeading = 2
+
     if robotHeading == desiredHeading:
-        linearX = 1
+        linearX = 2
         angularZ = 0
     else:
-        linearX = 0.5
-        angularZ = desiredHeading - robotHeading
+        angularZ = robotHeading - desiredHeading
         if angularZ > 4:
             angularZ = angularZ - 8
         elif angularZ < -4:
             angularZ = angularZ + 8
+        linearX = 2.0 / abs(angularZ)
+    # rospy.logwarn("desiredHeading: %s, robotHeading: %s", desiredHeading, robotHeading)
+    if desiredHeading == 8:
+        linearX = 0
+        angularZ = 0
     return [linearX, angularZ]
 
 def findHeading(robotYaw):
     robotAction = 8
-    if robotYaw < math.pi / 8 and robotYaw > -math.pi / 8:
+    if robotYaw < math.pi / 8 and robotYaw > -1 * math.pi / 8:
         robotAction = 0
-    elif robotYaw < -math.pi / 8 and robotYaw > -3 * math.pi / 8:
-        robotAction = 1
+    elif robotYaw < -1 * math.pi / 8 and robotYaw > -3 * math.pi / 8:
+        robotAction = 7
     elif robotYaw < -3 * math.pi / 8 and robotYaw > -5 * math.pi / 8:
-        robotAction = 2
+        robotAction = 6
     elif robotYaw < -5 * math.pi / 8 and robotYaw > -7 * math.pi / 8:
-        robotAction = 3
+        robotAction = 5
     elif robotYaw < -7 * math.pi / 8 or robotYaw > 7 * math.pi / 8:
         robotAction = 4
     elif robotYaw < 7 * math.pi / 8 and robotYaw > 5 * math.pi / 8:
-        robotAction = 5
+        robotAction = 3
     elif robotYaw < 5 * math.pi / 8 and robotYaw > 3 * math.pi / 8:
-        robotAction = 6
+        robotAction = 2
     elif robotYaw < 3 * math.pi / 8 and robotYaw > math.pi / 8:
-        robotAction = 7
+        robotAction = 1
     return robotAction
 
 def main():
     agent = A2CAgent(state_size, action_size)
     # macroAgent = A2CAgent(state_size, action_size)
 
-    obsAngleIdx= 0
     initPosMainRobot = [0, 0]
     rList = []
 
@@ -229,6 +241,7 @@ def main():
         posMainRobot_msg.pose.position.z = 0
         rospy.logwarn("Episode %d Starts!", e)
         rospy.logwarn(datetime.datetime.now().strftime('%H:%M:%S'))
+        posMainRobot_pub.publish(posMainRobot_msg)
         
         while not done:
             [rangeObsNumber, rangeObsPos, minIndex] = rangeFinder(posObstRobot_msg, initPosMainRobot)
@@ -237,8 +250,15 @@ def main():
             # macroPolicy = macroAgent.get_action(macroState)
             # rospy.logwarn(macroPolicy)
             tmpAction = []
+
+            model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
+            object_coordinates = model_coordinates("simple_create", "")
+            quaternion = (object_coordinates.pose.orientation.x, object_coordinates.pose.orientation.y, object_coordinates.pose.orientation.z, object_coordinates.pose.orientation.w)
+            euler = euler_from_quaternion(quaternion)
+            yaw = euler[2]
+
             for i in range(0, rangeObsNumber):
-                state = stateGenerator(rangeObsPos, [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], i)
+                state = stateGenerator(rangeObsPos, [object_coordinates.pose.position.x, object_coordinates.pose.position.y], i)
                 policyArr = agent.get_action(state)
                 if i == 0:
                     tmpAction = (1 - policyArr)
@@ -248,24 +268,23 @@ def main():
                 for j in range(0,action_size):
                     if tmpAction[j] > 0.999:
                         tmpAction[j] = 1
-                    elif tmpAction[j] > 0.995:
-                        tmpAction[j] = 0.1
+                    # elif tmpAction[j] > 0.995:
+                    #     tmpAction[j] = 0.1
                     else:
                         tmpAction[j] = 0
                 tmpArgMax = np.argmax(tmpAction)
-
+            # rospy.logwarn(tmpAction)
             if rangeObsNumber == 0:
                 tmpAction = [1.0/action_size for _ in range(0,action_size)]
-            tmpGoalPos = goalFinder([posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y])
+            tmpGoalPos = goalFinder([object_coordinates.pose.position.x, object_coordinates.pose.position.y])
 
-            state = stateGenerator(tmpGoalPos, [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
+            state = stateGenerator(tmpGoalPos, [object_coordinates.pose.position.x, object_coordinates.pose.position.y], -1)
             policyArr = agent.get_action(state)
-
-            # rospy.logwarn(tmpAction)
 
             if np.mean(tmpAction) == 0:
                 rospy.logwarn("No Action Selected! Random Action")
-                tmpAction[random.randrange(0, action_size)] = 1
+                # tmpAction[random.randrange(0, action_size)] = 1
+                tmpAction[tmpArgMax] = 1
 
             tmpAction = tmpAction * np.asarray(policyArr)
 
@@ -275,24 +294,24 @@ def main():
             # rospy.logwarn(macroPolicy)
             tmpAction = tmpAction / np.sum(tmpAction)
             action = np.random.choice(action_size, 1, p = tmpAction)[0]
+            # rospy.logwarn(tmpAction)
 
-            model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
-            object_coordinates = model_coordinates("simple_create", "")
-            quaternion = (object_coordinates.pose.orientation.x, object_coordinates.pose.orientation.y, object_coordinates.pose.orientation.z, object_coordinates.pose.orientation.w)
-            euler = euler_from_quaternion(quaternion)
-            yaw = euler[2]
             robotHeading = findHeading(yaw)
             linearX = 0
             angularZ = 0
-            [linearX, angularZ] = takeAction(robotHeading, action)
 
+            # rospy.logwarn(yaw)
+            [linearX, angularZ] = takeAction(robotHeading, action)
+            
             twistMainRobot_msg.linear.x = linearX
-            twistMainRobot_msg.angular.z = angularZ
+            twistMainRobot_msg.angular.z = angularZ * 0.5
+
+            twistMainRobot_pub.publish(twistMainRobot_msg)
 
             collisionFlag = 0
-            # next_macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
-            initPosMainRobot = [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y]
-            if(math.sqrt((posMainRobot_msg.pose.position.x - goalPos[0])**2 + (posMainRobot_msg.pose.position.y - goalPos[1])**2) <= agentRadius):
+            # next_macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [object_coordinates.pose.position.x, object_coordinates.pose.position.y], -1)
+            initPosMainRobot = [object_coordinates.pose.position.x, object_coordinates.pose.position.y]
+            if(math.sqrt((object_coordinates.pose.position.x - goalPos[0])**2 + (object_coordinates.pose.position.y - goalPos[1])**2) <= 2 * agentRadius):
                 rospy.logwarn("Goal Reached!")
                 collisionFlag = 1
                 done = True
@@ -302,9 +321,9 @@ def main():
                     posObstRobot_msg[i].pose.position.y += random.randrange(-1, 2)/100.0
                     # twistObstRobot_msg[i].linear.x = random.randrange(-1, 2)
                     # twistObstRobot_msg[i].angular.z = random.randrange(-1, 2)
-                if math.sqrt((posMainRobot_msg.pose.position.x - posObstRobot_msg[i].pose.position.x)**2 + (posMainRobot_msg.pose.position.y - posObstRobot_msg[i].pose.position.y)**2) <= obstacleRadius + agentRadius:
-                    rospy.logwarn("Collision!")
-                    collsiionFlag = -1
+                if math.sqrt((object_coordinates.pose.position.x - posObstRobot_msg[i].pose.position.x)**2 + (object_coordinates.pose.position.y - posObstRobot_msg[i].pose.position.y)**2) <= obstacleRadius + agentRadius:
+                    rospy.logerr("Collision!")
+                    collisionFlag = -1
                     done = True
 
             if not done:
@@ -334,7 +353,6 @@ def main():
                 goalPos_msg.pose.position.z = 0
 
             goalPos_pub.publish(goalPos_msg)
-            posMainRobot_pub.publish(posMainRobot_msg)
             for i in range(0, obsNumber):
                 posObstRobot_pub[i].publish(posObstRobot_msg[i])
                 # twistObstRobot_pub[i].publish(twistObstRobot_msg[i])
