@@ -13,6 +13,7 @@ from keras.optimizers import Adam
 from tf.transformations import euler_from_quaternion
 import math
 import datetime
+import time
 
 # Environment Setting
 num_episodes = 10
@@ -139,7 +140,7 @@ def goalFinder(agtPos):
     tmpGoal[1] = agtPos[1] + boundaryRadius * math.sin(goalAngle)
     return tmpGoal
 
-def takeAction(robotHeading, desiredHeading, robotYaw):
+def takeAction(robotHeading, desiredHeading, robotYaw, prevLinearX):
     linearX = 0
     angularZ = 0
     if desiredHeading == 2:
@@ -156,12 +157,29 @@ def takeAction(robotHeading, desiredHeading, robotYaw):
             angularZ = angularZ - 8
         elif angularZ < -4:
             angularZ = angularZ + 8
-        if desiredHeading == 8:
-            linearX = 0
+
+        if abs(angularZ) == 4:
+            linearX = -2.0
             angularZ = 0
+        elif angularZ == 3:
+            linearX = -2.0
+            angularZ = 0#-1
+        elif angularZ == -3:
+            linearX = -2.0
+            angularZ = 0#1
+        elif abs(angularZ) == 2:
+            if prevLinearX > 0:
+                linearX = 1.0
+            elif prevLinearX < 0:
+                linearX = -1.0
         else:
-            linearX = 2.0 / abs(angularZ)
-    # rospy.logwarn("desiredHeading: %s, robotHeading: %s", desiredHeading, robotHeading)
+            linearX = 1.0
+        if desiredHeading == 8:
+            linearX = 0#0.5
+            angularZ = 0
+        # else:
+        #     linearX = 2.0 / abs(angularZ)
+    rospy.logwarn("desiredHeading: %s, robotHeading: %s, angularZ: %s", desiredHeading, robotHeading, angularZ)
 
     # if desiredHeading == 0:
     #     angularZ = robotYaw
@@ -215,7 +233,7 @@ def findHeading(robotYaw):
 def main():
     agent = A2CAgent(state_size, action_size)
     # macroAgent = A2CAgent(state_size, action_size)
-
+    prevLinearX = 0
     initPosMainRobot = [0, 0]
     rList = []
 
@@ -236,6 +254,8 @@ def main():
     posMainRobot_pub = rospy.Publisher('gazebo/set_model_state', ModelState, queue_size = 10)
     posMainRobot_msg = ModelState()
     posMainRobot_msg.model_name = "simple_create"
+    rospy.logwarn("Loading !!!")
+    time.sleep(7)
     
     for i in range(0, obsNumber):
         posObstRobot_pub = posObstRobot_pub + [rospy.Publisher('gazebo/set_model_state', ModelState, queue_size = 10)]
@@ -264,20 +284,17 @@ def main():
     twistMainRobot_msg.angular.x = 0
     twistMainRobot_msg.angular.y = 0
     twistMainRobot_msg.angular.z = 0
-
     for e in range(num_episodes):
         done = False
         reward = 0
         posMainRobot_msg.pose.position.x = initPosMainRobot[0]
         posMainRobot_msg.pose.position.y = initPosMainRobot[1]
         posMainRobot_msg.pose.position.z = 0
+        posMainRobot_msg.pose.orientation.w = math.pi
         rospy.logwarn("Episode %d Starts!", e)
         rospy.logwarn(datetime.datetime.now().strftime('%H:%M:%S'))
         posMainRobot_pub.publish(posMainRobot_msg)
-        
         while not done:
-            [rangeObsNumber, rangeObsPos, minIndex] = rangeFinder(posObstRobot_msg, initPosMainRobot)
-
             # macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
             # macroPolicy = macroAgent.get_action(macroState)
             # rospy.logwarn(macroPolicy)
@@ -290,7 +307,7 @@ def main():
             quaternion = (object_coordinates.pose.orientation.x, object_coordinates.pose.orientation.y, object_coordinates.pose.orientation.z, object_coordinates.pose.orientation.w)
             euler = euler_from_quaternion(quaternion)
             yaw = euler[2]
-
+            [rangeObsNumber, rangeObsPos, _] = rangeFinder(obst_coordinates, initPosMainRobot)
             for i in range(0, rangeObsNumber):
                 state = stateGenerator(rangeObsPos, [object_coordinates.pose.position.x, object_coordinates.pose.position.y], i)
                 policyArr = agent.get_action(state)
@@ -298,12 +315,13 @@ def main():
                     tmpAction = (1 - policyArr)
                 else:
                     tmpAction = tmpAction * (1 - policyArr)
+            rospy.logwarn(tmpAction)
             if tmpAction != []:
                 for j in range(0,action_size):
                     if tmpAction[j] > 0.999:
                         tmpAction[j] = 1
-                    # elif tmpAction[j] > 0.995:
-                    #     tmpAction[j] = 0.1
+                    elif tmpAction[j] > 0.995:
+                        tmpAction[j] = 0.1
                     else:
                         tmpAction[j] = 0
                 tmpArgMax = np.argmax(tmpAction)
@@ -314,7 +332,7 @@ def main():
 
             state = stateGenerator(tmpGoalPos, [object_coordinates.pose.position.x, object_coordinates.pose.position.y], -1)
             policyArr = agent.get_action(state)
-
+            # rospy.logwarn("Goal: %s", policyArr)
             if np.mean(tmpAction) == 0:
                 rospy.logwarn("No Action Selected! Random Action")
                 # tmpAction[random.randrange(0, action_size)] = 1
@@ -328,18 +346,18 @@ def main():
             # rospy.logwarn(macroPolicy)
             tmpAction = tmpAction / np.sum(tmpAction)
             action = np.random.choice(action_size, 1, p = tmpAction)[0]
-            # rospy.logwarn(tmpAction)
-
+            rospy.logwarn("Final: %s", tmpAction)
+            rospy.logerr("=========================================================")
             robotHeading = findHeading(yaw)
             linearX = 0
             angularZ = 0
-
+            # rospy.logwarn(action)
             # rospy.logwarn(yaw)
-            [linearX, angularZ] = takeAction(robotHeading, action, yaw)
-            
-            twistMainRobot_msg.linear.x = linearX
-            twistMainRobot_msg.angular.z = angularZ * 0.5
+            [linearX, angularZ] = takeAction(robotHeading, action, yaw, prevLinearX)
 
+            twistMainRobot_msg.linear.x = linearX
+            twistMainRobot_msg.angular.z = angularZ # * 0.5
+            prevLinearX = linearX
             twistMainRobot_pub.publish(twistMainRobot_msg)
 
             collisionFlag = 0
@@ -351,9 +369,12 @@ def main():
                 done = True
             for i in range(0, obsNumber):
                 if moveObstacles:
-                    twistObstRobot_msg[i].linear.x = 0#random.randrange(-1, 2)
-                    twistObstRobot_msg[i].angular.z = 0#random.randrange(-1, 2)
-                if math.sqrt((object_coordinates.pose.position.x - posObstRobot_msg[i].pose.position.x)**2 + (object_coordinates.pose.position.y - posObstRobot_msg[i].pose.position.y)**2) <= obstacleRadius + agentRadius:
+                    twistObstRobot_msg[i].linear.x = random.randrange(0, 2)
+                    twistObstRobot_msg[i].angular.z = random.randrange(-4, 5)
+                if math.sqrt((obst_coordinates[i].pose.position.x - goalPos[0])**2 + (obst_coordinates[i].pose.position.y - goalPos[1])**2) <= 2 * agentRadius:
+                    twistObstRobot_msg[i].linear.x = -2
+                    twistObstRobot_msg[i].angular.z = 3
+                if math.sqrt((object_coordinates.pose.position.x - obst_coordinates[i].pose.position.x)**2 + (object_coordinates.pose.position.y - obst_coordinates[i].pose.position.y)**2) <= obstacleRadius + agentRadius:
                     rospy.logerr("Collision!")
                     collisionFlag = -1
                     done = True
