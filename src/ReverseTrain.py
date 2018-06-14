@@ -16,7 +16,7 @@ import datetime
 obsNumber = 1
 state_size = obsNumber * 2
 action_size = 8
-num_episodes = 1801
+num_episodes = 7201
 boundaryRadius = 0.85
 obstacleRadius = 0.2
 agentRadius = 0.17
@@ -83,9 +83,9 @@ class A2CAgent:
         else:
             advantages[0][action] = reward + self.discount_factor * (next_value) - value
             target[0][0] = reward + self.discount_factor * next_value
-
-        self.actor.fit(state, advantages, epochs=1, verbose=0)
-        self.critic.fit(state, target, epochs=1, verbose=0)
+        ActorHistory = self.actor.fit(state, advantages, epochs=1, verbose=0)
+        CriticHistory = self.critic.fit(state, target, epochs=1, verbose=0)
+        return [ActorHistory, CriticHistory]
 
 def stateGenerator(obsPosition, agtPosition):
     returnSum = []
@@ -125,6 +125,12 @@ def takeAction(action):
 def main():
     agent = A2CAgent(state_size, action_size)
 
+    episodeNo = []
+    scorePlot = []
+    # ActLossPlot = []
+    # CritLossPlot = []
+    # iteration = 0
+
     obsAngleIdx= 0
     circleFlag = False
     initRandom = random.randrange(0, 360)
@@ -153,6 +159,9 @@ def main():
         done = False
         score = 0
         reward = 0
+        total_loss_act = 0
+        total_loss_crit = 0
+
         posMainRobot_msg.pose.position.x = initPosMainRobot[0]
         posMainRobot_msg.pose.position.y = initPosMainRobot[1]
         posMainRobot_msg.pose.position.z = 0
@@ -161,6 +170,7 @@ def main():
         
         state = stateGenerator([posObstRobot_msg.pose.position.x, posObstRobot_msg.pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y])
         while not done:
+            # iteration += 1
             action = agent.get_action(state)
             xMove = 0
             yMove = 0
@@ -182,13 +192,15 @@ def main():
                 done = True
 
             if not done:
-                reward = 0
+                reward = -0.1
             else:
                 if collisionFlag == 1:
                     reward = -1000
                 elif collisionFlag == -1:
                     reward = 1000
-            agent.train_model(state, action, reward, next_state, done)
+            [ActorHistory, CriticHistory] = agent.train_model(state, action, reward, next_state, done)
+            total_loss_act += ActorHistory.history['loss'][0]
+            total_loss_crit += CriticHistory.history['loss'][0]
 
             score += reward
             state = next_state
@@ -207,6 +219,22 @@ def main():
                 obsAngle = (obsAngleIdx + initRandom)*math.pi/180
                 posObstRobot_msg.pose.position.x = initPosMainRobot[0] + boundaryRadius * math.cos(obsAngle)
                 posObstRobot_msg.pose.position.y = initPosMainRobot[1] + boundaryRadius * math.sin(obsAngle)
+                episodeNo = episodeNo + [e]
+            # iterationNo = 1000
+            # if iteration % iterationNo == 0:
+            #     episodeNo = episodeNo + [iteration / iterationNo]
+            #     ActLossPlot = ActLossPlot + [total_loss_act / iterationNo]
+            #     CritLossPlot = CritLossPlot + [total_loss_crit / iterationNo]
+            #     # rospy.logwarn(total_loss)
+            #     # rospy.logwarn("iteration: %s", iteration)
+            #     plt.plot(episodeNo, ActLossPlot, linewidth = 0.3)
+            #     # plt.savefig("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/ActorLossPlot.png", dpi = 300)
+            #     plt.plot(episodeNo, CritLossPlot, linewidth = 0.3)
+            #     plt.savefig("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/LossPlot_All.png", dpi = 300)
+ 
+            #     total_loss_act = 0
+            #     total_loss_crit = 0
+                scorePlot = scorePlot + [score]
             posMainRobot_pub.publish(posMainRobot_msg)
             posObstRobot_pub.publish(posObstRobot_msg)
             rate.sleep()
@@ -214,7 +242,11 @@ def main():
         if e % 60 == 0:
             agent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Rev.h5")
             agent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Rev.h5")
+
+            plt.plot(episodeNo, scorePlot, linewidth=0.3)
+            plt.savefig("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/RewardPlot.png", dpi=300)
         rospy.logwarn("Reward: %d", score)
+        
     # while not rospy.is_shutdown():
     #     posMainRobot_msg.pose.position.x += 0.01
     #     posMainRobot_msg.pose.position.y += 0.01

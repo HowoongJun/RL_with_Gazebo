@@ -16,7 +16,7 @@ import datetime
 import time
 
 # Environment Setting
-num_episodes = 10
+num_episodes = 99
 obstacleRadius = 0.18
 agentRadius = 0.18
 obsNumber = 10
@@ -56,7 +56,6 @@ class A2CAgent:
         # if self.load_model2:
             # self.actor.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
             # self.critic.load_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
-
             
     # approximate policy and value using Neural Network
     # actor: state is input and probability of each action is output of model
@@ -179,7 +178,7 @@ def takeAction(robotHeading, desiredHeading, robotYaw, prevLinearX):
             angularZ = 0
         # else:
         #     linearX = 2.0 / abs(angularZ)
-    rospy.logwarn("desiredHeading: %s, robotHeading: %s, angularZ: %s", desiredHeading, robotHeading, angularZ)
+    # rospy.logwarn("desiredHeading: %s, robotHeading: %s, angularZ: %s", desiredHeading, robotHeading, angularZ)
 
     # if desiredHeading == 0:
     #     angularZ = robotYaw
@@ -315,7 +314,7 @@ def main():
                     tmpAction = (1 - policyArr)
                 else:
                     tmpAction = tmpAction * (1 - policyArr)
-            rospy.logwarn(tmpAction)
+            # rospy.logwarn(tmpAction)
             if tmpAction != []:
                 for j in range(0,action_size):
                     if tmpAction[j] > 0.999:
@@ -346,8 +345,8 @@ def main():
             # rospy.logwarn(macroPolicy)
             tmpAction = tmpAction / np.sum(tmpAction)
             action = np.random.choice(action_size, 1, p = tmpAction)[0]
-            rospy.logwarn("Final: %s", tmpAction)
-            rospy.logerr("=========================================================")
+            # rospy.logwarn("Final: %s", tmpAction)
+            # rospy.logerr("=========================================================")
             robotHeading = findHeading(yaw)
             linearX = 0
             angularZ = 0
