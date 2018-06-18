@@ -11,12 +11,13 @@ from keras.models import Sequential
 from keras.optimizers import Adam
 import math
 import datetime
+import time
 
 # Environment Setting
 obsNumber = 1
 state_size = obsNumber * 2
 action_size = 8
-num_episodes = 7201
+num_episodes = 1801
 boundaryRadius = 0.85
 obstacleRadius = 0.2
 agentRadius = 0.17
@@ -123,6 +124,7 @@ def takeAction(action):
     return [xAction, yAction]
 
 def main():
+    start = time.time()
     agent = A2CAgent(state_size, action_size)
 
     episodeNo = []
@@ -154,6 +156,7 @@ def main():
     obsAngle = obsAngleIdx * math.pi/180
     posObstRobot_msg.pose.position.x = initPosMainRobot[0] + boundaryRadius * math.cos(obsAngle)
     posObstRobot_msg.pose.position.y = initPosMainRobot[1] + boundaryRadius * math.sin(obsAngle)
+
 
     for e in range(num_episodes):
         done = False
@@ -220,6 +223,10 @@ def main():
                 posObstRobot_msg.pose.position.x = initPosMainRobot[0] + boundaryRadius * math.cos(obsAngle)
                 posObstRobot_msg.pose.position.y = initPosMainRobot[1] + boundaryRadius * math.sin(obsAngle)
                 episodeNo = episodeNo + [e]
+                final = time.time()
+                elapsed = final - start
+                rospy.logwarn("Elapsed Time: %s s", elapsed)
+
             # iterationNo = 1000
             # if iteration % iterationNo == 0:
             #     episodeNo = episodeNo + [iteration / iterationNo]
@@ -242,7 +249,6 @@ def main():
         if e % 60 == 0:
             agent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Rev.h5")
             agent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Rev.h5")
-
             plt.plot(episodeNo, scorePlot, linewidth=0.3)
             plt.savefig("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/RewardPlot.png", dpi=300)
         rospy.logwarn("Reward: %d", score)

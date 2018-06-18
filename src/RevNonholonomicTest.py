@@ -16,10 +16,10 @@ import datetime
 import time
 
 # Environment Setting
-num_episodes = 99
+num_episodes = 201
 obstacleRadius = 0.18
 agentRadius = 0.18
-obsNumber = 10
+obsNumber = 8
 state_size = 2
 action_size = 9
 boundaryRadius = 0.85
@@ -161,10 +161,10 @@ def takeAction(robotHeading, desiredHeading, robotYaw, prevLinearX):
             linearX = -2.0
             angularZ = 0
         elif angularZ == 3:
-            linearX = -2.0
+            linearX = -1.0
             angularZ = 0#-1
         elif angularZ == -3:
-            linearX = -2.0
+            linearX = -1.0
             angularZ = 0#1
         elif abs(angularZ) == 2:
             if prevLinearX > 0:
@@ -266,9 +266,18 @@ def main():
         if i < 5:
             posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + i + 1
             posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + i
-        else:
+        elif i < 10:
             posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + i - 5
             posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + i + 1 - 5
+        elif i < 14:
+            posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + i + 2 - 10
+            posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + i - 10
+        elif i < 18:
+            posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + i - 14
+            posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + i + 2 - 14
+        elif i < 20:
+            posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + i + 3 - 18
+            posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + i - 18
         posObstRobot_msg[i].pose.position.z = 0
         # twistObstRobot_msg[i] = Twist()
         posObstRobot_pub[i].publish(posObstRobot_msg[i])
@@ -375,6 +384,8 @@ def main():
                     twistObstRobot_msg[i].angular.z = 3
                 if math.sqrt((object_coordinates.pose.position.x - obst_coordinates[i].pose.position.x)**2 + (object_coordinates.pose.position.y - obst_coordinates[i].pose.position.y)**2) <= obstacleRadius + agentRadius:
                     rospy.logerr("Collision!")
+                    if action == 8:
+                        rospy.logwarn("Surrounded by obstacles !! No solution !!")
                     collisionFlag = -1
                     done = True
 
@@ -395,14 +406,24 @@ def main():
             # macroState = next_macroState
 
             if done:
+                # time.sleep(5)
                 initPosMainRobot = [0, 0]
                 for i in range(0, obsNumber):
                     if i < 5:
                         posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + i + 1
                         posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + i
-                    else:
+                    elif i < 10:
                         posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + i - 5
                         posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + i + 1 - 5
+                    elif i < 14:
+                        posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + i + 2 - 10
+                        posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + i - 10
+                    elif i < 18:
+                        posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + i - 14
+                        posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + i + 2 - 14
+                    elif i < 20:
+                        posObstRobot_msg[i].pose.position.x = initPosMainRobot[0] + i + 3 - 18
+                        posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + i - 18
 
                     posObstRobot_msg[i].pose.position.z = 0
                     posObstRobot_pub[i].publish(posObstRobot_msg[i])
