@@ -19,7 +19,7 @@ import time
 num_episodes = 201
 obstacleRadius = 0.18
 agentRadius = 0.18
-obsNumber = 8
+obsNumber = 10
 state_size = 2
 action_size = 9
 boundaryRadius = 0.85
@@ -139,43 +139,100 @@ def goalFinder(agtPos):
     tmpGoal[1] = agtPos[1] + boundaryRadius * math.sin(goalAngle)
     return tmpGoal
 
+def action2degree(action):
+    degree = 0
+    if action == 0:
+        degree = 0
+    elif action == 1:
+        degree = math.pi / 4
+    elif action == 2:
+        degree = math.pi / 2
+    elif action == 3:
+        degree = math.pi * 3 / 4
+    elif action == 4:
+        degree = math.pi
+    elif action == 5:
+        degree  = -3 * math.pi / 4
+    elif action == 6:
+        degree = -1 * math.pi / 2
+    elif action == 7:
+        degree = -1 * math.pi / 4
+
+    return degree
+
 def takeAction(robotHeading, desiredHeading, robotYaw, prevLinearX):
     linearX = 0
     angularZ = 0
+    angularVelocityCalibration = 2.0
+    maxSpeed = 2.0
     if desiredHeading == 2:
         desiredHeading = 7
     elif desiredHeading == 7:
         desiredHeading = 2
 
-    if robotHeading == desiredHeading:
-        linearX = 2
+    desiredDegree = action2degree(desiredHeading)
+
+    if desiredDegree == robotYaw:
+        linearX = maxSpeed
         angularZ = 0
     else:
-        angularZ = robotHeading - desiredHeading
-        if angularZ > 4:
-            angularZ = angularZ - 8
-        elif angularZ < -4:
-            angularZ = angularZ + 8
+        angularDiff = robotYaw - desiredDegree
+        if angularDiff > math.pi:
+            angularDiff = angularDiff - math.pi * 2
+        elif angularDiff < -4:
+            angularDiff = angularDiff + math.pi * 2
 
-        if abs(angularZ) == 4:
+        # if angularDiff >= 0:
+            # linearX = -4 / math.pi * angularDiff + 2.0
+        # elif angularDiff < 0:
+            # linearX = 4 / math.pi * angularDiff + 2.0
+        linearX = -4 / (math.pi * math.pi) * (angularDiff * angularDiff) + 2
+        if abs(angularDiff) == math.pi:
+            angularZ = 0
+        elif abs(angularDiff) <= math.pi / math.sqrt(2):
+            angularZ = angularDiff * angularVelocityCalibration
+        elif angularDiff > math.pi / math.sqrt(2):
+            angularZ = 0#(math.pi / 2 - angularDiff) * angularVelocityCalibration
             linearX = -2.0
-            angularZ = 0
-        elif angularZ == 3:
-            linearX = -1.0
-            angularZ = 0#-1
-        elif angularZ == -3:
-            linearX = -1.0
-            angularZ = 0#1
-        elif abs(angularZ) == 2:
-            if prevLinearX > 0:
-                linearX = 1.0
-            elif prevLinearX < 0:
-                linearX = -1.0
-        else:
-            linearX = 1.0
+        elif angularDiff < -1 * math.pi / math.sqrt(2):
+            angularZ = 0#-(angularDiff + math.pi / 2) * angularVelocityCalibration
+            linearX = -2.0
         if desiredHeading == 8:
-            linearX = 0#0.5
+            linearX = 0
             angularZ = 0
+
+#################################################################################################################
+    # if robotHeading == desiredHeading:
+    #     linearX = 2
+    #     angularZ = 0
+    # else:
+    #     angularZ = robotHeading - desiredHeading
+    #     if angularZ > 4:
+    #         angularZ = angularZ - 8
+    #     elif angularZ < -4:
+    #         angularZ = angularZ + 8
+
+    #     if abs(angularZ) == 4:
+    #         linearX = -2.0
+    #         angularZ = 0
+    #     elif angularZ == 3:
+    #         linearX = -1.0
+    #         angularZ = 0#-1
+    #     elif angularZ == -3:
+    #         linearX = -1.0
+    #         angularZ = 0#1
+    #     elif abs(angularZ) == 2:
+    #         if prevLinearX > 0:
+    #             linearX = 1.0
+    #         elif prevLinearX < 0:
+    #             linearX = -1.0
+    #     else:
+    #         linearX = 1.0
+    #     if desiredHeading == 8:
+    #         linearX = 0#0.5
+    #         angularZ = 0
+
+##################################################################################################################            
         # else:
         #     linearX = 2.0 / abs(angularZ)
     # rospy.logwarn("desiredHeading: %s, robotHeading: %s, angularZ: %s", desiredHeading, robotHeading, angularZ)
@@ -208,6 +265,7 @@ def takeAction(robotHeading, desiredHeading, robotYaw, prevLinearX):
     # else:
     #     linearX = math.pi - abs(angularZ)
     return [linearX, angularZ]
+
 
 def findHeading(robotYaw):
     robotAction = 8
@@ -280,6 +338,7 @@ def main():
             posObstRobot_msg[i].pose.position.y = initPosMainRobot[1] + i - 18
         posObstRobot_msg[i].pose.position.z = 0
         # twistObstRobot_msg[i] = Twist()
+        # posObstRobot_msg[i].pose.orientation.w = math.pi
         posObstRobot_pub[i].publish(posObstRobot_msg[i])
 
     goalPos_msg.pose.position.x = goalPos[0]
@@ -382,7 +441,7 @@ def main():
                 if math.sqrt((obst_coordinates[i].pose.position.x - goalPos[0])**2 + (obst_coordinates[i].pose.position.y - goalPos[1])**2) <= 2 * agentRadius:
                     twistObstRobot_msg[i].linear.x = -2
                     twistObstRobot_msg[i].angular.z = 3
-                if math.sqrt((object_coordinates.pose.position.x - obst_coordinates[i].pose.position.x)**2 + (object_coordinates.pose.position.y - obst_coordinates[i].pose.position.y)**2) <= obstacleRadius + agentRadius:
+                if math.sqrt((object_coordinates.pose.position.x - obst_coordinates[i].pose.position.x)**2 + (object_coordinates.pose.position.y - obst_coordinates[i].pose.position.y)**2) < obstacleRadius + agentRadius:
                     rospy.logerr("Collision!")
                     if action == 8:
                         rospy.logwarn("Surrounded by obstacles !! No solution !!")
