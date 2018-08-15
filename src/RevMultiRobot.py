@@ -19,7 +19,7 @@ import time
 num_episodes = 201
 obstacleRadius = 0.18
 agentRadius = 0.18
-obsNumber = 0
+obsNumber = 4
 mainRobotNumber = 4
 state_size = 2
 action_size = 9
@@ -164,7 +164,7 @@ def action2degree(action):
 def takeAction(desiredHeading, robotYaw):
     linearX = 0
     angularZ = 0
-    angularVelocityCalibration = 3.0
+    angularVelocityCalibration = 5.0
     maxSpeed = 2.0
     if desiredHeading == 2:
         desiredHeading = 7
@@ -207,7 +207,7 @@ def main():
     agent = A2CAgent(state_size, action_size)
     # macroAgent = A2CAgent(state_size, action_size)
     initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5]]
-    initPosObstRobot = [[2, 2], [2, 3], [3, 2], [3, 3], [4, 2], [3, 4], [1, 3], [2, 1]]
+    initPosObstRobot = [[1.5, 1.5], [3.5, 1.5], [3.5, 3.5], [1.5, 3.5], [4, 2], [3, 4], [1, 3], [2, 1]]
     rList = []
 
     rospy.init_node('circler', anonymous=True)
@@ -348,11 +348,14 @@ def main():
                         if moveObstacles:
                             twistObstRobot_msg[i].linear.x = random.randrange(0, 2)
                             twistObstRobot_msg[i].angular.z = random.randrange(-4, 5)
-                        if math.sqrt((obst_coordinates[i].pose.position.x - goalPos[curRobNo][0])**2 + (obst_coordinates[i].pose.position.y - goalPos[curRobNo][1])**2) <= 2 * agentRadius:
-                            twistObstRobot_msg[i].linear.x = -2
-                            twistObstRobot_msg[i].angular.z = 3
+#                        if math.sqrt((obst_coordinates[i].pose.position.x - goalPos[curRobNo][0])**2 + (obst_coordinates[i].pose.position.y - goalPos[curRobNo][1])**2) <= 2 * agentRadius + 0.5:
+#                            twistObstRobot_msg[i].linear.x = -2
+#                            twistObstRobot_msg[i].angular.z = 3
                     if math.sqrt((object_coordinates.pose.position.x - obst_coordinates[i].pose.position.x)**2 + (object_coordinates.pose.position.y - obst_coordinates[i].pose.position.y)**2) < obstacleRadius + agentRadius:
-                        rospy.logerr("Collision!")
+                        if i < obsNumber:
+                            rospy.logerr("Collision with an obstacle!")
+                        else:
+                            rospy.logerr("Collision with a main robot!")
                         collisionFlag = -1
                         done = True
             tmpCount = 1
