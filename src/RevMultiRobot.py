@@ -19,7 +19,7 @@ import time
 num_episodes = 201
 obstacleRadius = 0.18
 agentRadius = 0.18
-obsNumber = 4
+obsNumber = 0
 mainRobotNumber = 4
 state_size = 2
 action_size = 9
@@ -180,7 +180,7 @@ def takeAction(desiredHeading, robotYaw):
         angularDiff = robotYaw - desiredDegree
         if angularDiff > math.pi:
             angularDiff = angularDiff - math.pi * 2
-        elif angularDiff < -4:
+        elif angularDiff < -math.pi:
             angularDiff = angularDiff + math.pi * 2
 
         # if angularDiff >= 0:
@@ -193,11 +193,9 @@ def takeAction(desiredHeading, robotYaw):
         elif abs(angularDiff) <= math.pi / math.sqrt(2):
             angularZ = angularDiff * angularVelocityCalibration
         elif angularDiff > math.pi / math.sqrt(2):
-            angularZ = (math.pi / 2 - angularDiff) * angularVelocityCalibration
-            # linearX = -2.0
+            angularZ = (angularDiff - math.pi) * angularVelocityCalibration
         elif angularDiff < -1 * math.pi / math.sqrt(2):
-            angularZ = -(angularDiff + math.pi / 2) * angularVelocityCalibration
-            # linearX = -2.0
+            angularZ = (angularDiff + math.pi) * angularVelocityCalibration
         if desiredHeading == 8:
             linearX = 0
             angularZ = 0
@@ -224,7 +222,6 @@ def main():
     twistMainRobot_msg = []
 
     rospy.logwarn("Loading !!!")
-    time.sleep(10)
 
     for i in range(0, mainRobotNumber):
         posMainRobot_pub = posMainRobot_pub + [rospy.Publisher('gazebo/set_model_state', ModelState, queue_size = 10)]
@@ -253,10 +250,13 @@ def main():
         [posObstRobot_msg[i].pose.position.x, posObstRobot_msg[i].pose.position.y] = initPosObstRobot[i]
         posObstRobot_msg[i].pose.position.z = 0
         posObstRobot_pub[i].publish(posObstRobot_msg[i])
-
+    time.sleep(10)
+    elapsed = 0
+    fps = 0
     for e in range(num_episodes):
+        start = time.time()
         done = False
-        reward = 0
+        frame = 0
         rospy.logwarn("Episode %d Starts!", e)
         rospy.logwarn(datetime.datetime.now().strftime('%H:%M:%S'))
         for i in range(0, mainRobotNumber):
@@ -270,6 +270,7 @@ def main():
             goalReached = goalReached + [False]
 
         while not done:
+            frame += 1
             # macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
             # macroPolicy = macroAgent.get_action(macroState)
             for curRobNo in range(0, mainRobotNumber):
@@ -365,11 +366,8 @@ def main():
                 done = True
                 rList.append(1)
 
-            if not done:
-                reward = 0
-            else:
+            if done:
                 if collisionFlag == -1:
-                    reward = -1000
                     rList.append(0)
                 
                 # macroAction = np.random.choice(action_size, 1, p=macroPolicy)
@@ -390,9 +388,15 @@ def main():
         # if e % 50 == 0:
             # macroAgent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
             # macroAgent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
-        if e != 0:
-            rospy.logwarn("Percent of successful episodes: %f %%", 100.0 * sum(rList)/(e))
-
+        final = time.time()
+        fps = (fps * e + frame / (final - start)) / (e + 1)
+        if collisionFlag != -1:
+            elapsed = (elapsed * (sum(rList) - 1) + (final - start)) / sum(rList)
+        rospy.logwarn("Percent of successful episodes: %f %%", 100.0 * sum(rList)/(e + 1))
+        rospy.logwarn("Elapsed Time: %f s", final - start)
+        rospy.logwarn("Frame per Second: %f fps", frame / (final - start))
+        rospy.logwarn("Average Time: %f s", elapsed)
+        rospy.logwarn("Average FPS: %f fps", fps)
 if __name__ == '__main__':
     try:
         main()

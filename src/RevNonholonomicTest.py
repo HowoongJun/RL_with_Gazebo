@@ -179,7 +179,7 @@ def takeAction(robotHeading, desiredHeading, robotYaw, prevLinearX):
         angularDiff = robotYaw - desiredDegree
         if angularDiff > math.pi:
             angularDiff = angularDiff - math.pi * 2
-        elif angularDiff < -4:
+        elif angularDiff < -math.pi:
             angularDiff = angularDiff + math.pi * 2
 
         # if angularDiff >= 0:

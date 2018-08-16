@@ -16,13 +16,9 @@ import time
 
 # Environment Setting
 num_episodes = 201
-obstacleRadius = 0.18
-agentRadius = 0.18
+agentRadius = 0.17
 obsNumber = 0
 mainRobotNumber = 4
-state_size = 2
-action_size = 9
-boundaryRadius = 0.85
 goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0]] 
 moveObstacles = True
 
@@ -31,60 +27,12 @@ ws_model['robot_radius'] = agentRadius
 ws_model['circular_obstacles'] = []
 ws_model['boundary'] = []
 
-def direction2action(direction):
-    action = -1
-    if int(direction[0]) == 0 and int(direction[1]) == 0:
-        action = 8
-    elif int(direction[0]) == 1 and int(direction[1]) == 0:
-        action = 0
-    elif int(direction[0]) == 1 and int(direction[1]) == -1:
-        action = 1
-    elif int(direction[0]) == 0 and int(direction[1]) == -1:
-        action = 7
-    elif int(direction[0]) == -1 and int(direction[1]) == -1:
-        action = 3
-    elif int(direction[0]) == -1 and int(direction[1]) == 0:
-        action = 4
-    elif int(direction[0]) == -1 and int(direction[1]) == 1:
-        action = 5
-    elif int(direction[0]) == 0 and int(direction[1]) == 1:
-        action = 6
-    elif int(direction[0]) == 1 and int(direction[1]) == 1:
-        action = 2
-    return action    
-
-def action2degree(action):
-    degree = 0
-    if action == 0:
-        degree = 0
-    elif action == 1:
-        degree = math.pi / 4
-    elif action == 2:
-        degree = math.pi / 2
-    elif action == 3:
-        degree = math.pi * 3 / 4
-    elif action == 4:
-        degree = math.pi
-    elif action == 5:
-        degree  = -3 * math.pi / 4
-    elif action == 6:
-        degree = -1 * math.pi / 2
-    elif action == 7:
-        degree = -1 * math.pi / 4
-
-    return degree
-
-def takeAction(desiredHeading, robotYaw):
+def takeAction(desiredVector, robotYaw):
     linearX = 0
     angularZ = 0
     angularVelocityCalibration = 5.0
-    maxSpeed = 2.0
-    if desiredHeading == 2:
-        desiredHeading = 7
-    elif desiredHeading == 7:
-        desiredHeading = 2
-
-    desiredDegree = action2degree(desiredHeading)
+    maxSpeed = math.sqrt(math.pow(desiredVector[0], 2) + math.pow(desiredVector[1], 2))
+    desiredDegree = math.atan2(desiredVector[1], desiredVector[0])
 
     if desiredDegree == robotYaw:
         linearX = maxSpeed
@@ -93,21 +41,22 @@ def takeAction(desiredHeading, robotYaw):
         angularDiff = robotYaw - desiredDegree
         if angularDiff > math.pi:
             angularDiff = angularDiff - math.pi * 2
-        elif angularDiff < -4:
+        elif angularDiff < -math.pi:
             angularDiff = angularDiff + math.pi * 2
-
+        # if angularDiff > 0:
+        #     linearX = -2 * maxSpeed / math.pi * angularDiff + maxSpeed
+        # else:
+        #     linearX = 2 * maxSpeed / math.pi * angularDiff + maxSpeed
         linearX = -2 * maxSpeed / (math.pi * math.pi) * (angularDiff * angularDiff) + maxSpeed
         if abs(angularDiff) == math.pi:
             angularZ = 0
         elif abs(angularDiff) <= math.pi / math.sqrt(2):
             angularZ = angularDiff * angularVelocityCalibration
         elif angularDiff > math.pi / math.sqrt(2):
-            angularZ = (math.pi / 2 - angularDiff) * angularVelocityCalibration
+            angularZ = (angularDiff - math.pi) * angularVelocityCalibration
         elif angularDiff < -1 * math.pi / math.sqrt(2):
-            angularZ = -(angularDiff + math.pi / 2) * angularVelocityCalibration
-        if desiredHeading == 8:
-            linearX = 0
-            angularZ = 0
+            angularZ = (angularDiff + math.pi) * angularVelocityCalibration
+
     return [linearX, angularZ]
 
 def main():
@@ -142,7 +91,11 @@ def main():
         twistMainRobot_msg[i].angular.y = 0
         twistMainRobot_msg[i].angular.z = 0    
 
+    time.sleep(5)
+    fps = 0
+    elapsed = 0
     for e in range(num_episodes):
+        start = time.time()
         done = False
         rospy.logwarn("Episode %d Starts!", e)
         rospy.logwarn(datetime.datetime.now().strftime('%H:%M:%S'))
@@ -157,25 +110,27 @@ def main():
             goalReached = goalReached + [False]
         V = [[0, 0] for i in xrange(len(initPosMainRobot))]
         V_max = [2.0 for i in xrange(len(initPosMainRobot))]
-        
+        frame = 0
         while not done:
+            frame += 1
             object_coordinates = []
             X = []
-            for curRobNo in range(0, mainRobotNumber):
+            for i in range(0, mainRobotNumber):
                 model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
-                object_coordinates = object_coordinates + [model_coordinates("mainRobot" + str(curRobNo), "")]
-                X = X + [[object_coordinates[curRobNo].pose.position.x, object_coordinates[curRobNo].pose.position.y]]
+                object_coordinates = object_coordinates + [model_coordinates("mainRobot" + str(i), "")]
+                X = X + [[object_coordinates[i].pose.position.x, object_coordinates[i].pose.position.y]]
             V_des = compute_V_des(X, goalPos, V_max)
             V = RVO_update(X, V_des, V, ws_model)
             for curRobNo in range(0, mainRobotNumber):
                 quaternion = (object_coordinates[curRobNo].pose.orientation.x, object_coordinates[curRobNo].pose.orientation.y, object_coordinates[curRobNo].pose.orientation.z, object_coordinates[curRobNo].pose.orientation.w)
                 euler = euler_from_quaternion(quaternion)
                 yaw = euler[2]
-                action = direction2action(V[curRobNo])
+                # rospy.logwarn(str(curRobNo) + ":" + str(V[curRobNo]))
                 linearX = 0
                 angularZ = 0
-                [linearX, angularZ] = takeAction(action, yaw)
-
+                
+                [linearX, angularZ] = takeAction(V[curRobNo], yaw)
+                # rospy.logwarn(str(curRobNo) + ": " + str(action))
                 twistMainRobot_msg[curRobNo].linear.x = linearX
                 twistMainRobot_msg[curRobNo].angular.z = angularZ # * 0.5
                 twistMainRobot_pub[curRobNo].publish(twistMainRobot_msg[curRobNo])
@@ -188,7 +143,7 @@ def main():
                     goalReached[curRobNo] = True
                 for i in range(0, mainRobotNumber):
                     if i != curRobNo:
-                        if math.sqrt((object_coordinates[curRobNo].pose.position.x - object_coordinates[i].pose.position.x)**2 + (object_coordinates[curRobNo].pose.position.y - object_coordinates[i].pose.position.y)**2) < obstacleRadius + agentRadius:
+                        if math.sqrt((object_coordinates[curRobNo].pose.position.x - object_coordinates[i].pose.position.x)**2 + (object_coordinates[curRobNo].pose.position.y - object_coordinates[i].pose.position.y)**2) < 2*agentRadius:
                             rospy.logerr("Collision !")
                             collisionFlag = -1
                             done = True
@@ -204,9 +159,15 @@ def main():
                     rList.append(0)
                 initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5]]
             rate.sleep()
-        if e != 0:
-            rospy.logwarn("Percent of successful episodes: %f %%", 100.0 * sum(rList)/(e))
-
+        final = time.time()
+        fps = (fps * e + frame / (final - start)) / (e + 1)
+        if collisionFlag != -1:
+            elapsed = (elapsed * (sum(rList) - 1) + final - start) / sum(rList)
+        rospy.logwarn("Percent of successful episodes: %f %%", 100.0 * sum(rList)/(e + 1))
+        rospy.logwarn("Elapsed Time: %f s", final - start)
+        rospy.logwarn("Frame per Second: %f fps", frame / (final - start))
+        rospy.logwarn("Average Time: %f s", elapsed)
+        rospy.logwarn("Average FPS: %f fps", fps)
 if __name__ == '__main__':
     try:
         main()
