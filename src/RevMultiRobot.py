@@ -19,14 +19,13 @@ import time
 num_episodes = 201
 obstacleRadius = 0.18
 agentRadius = 0.18
-obsNumber = 0
+obsNumber = 2
 mainRobotNumber = 4
 state_size = 2
 action_size = 9
 boundaryRadius = 0.85
 goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0]] 
 moveObstacles = True
-
 
 # A2C(Advantage Actor-Critic) agent
 class A2CAgent:
@@ -205,11 +204,11 @@ def main():
     agent = A2CAgent(state_size, action_size)
     # macroAgent = A2CAgent(state_size, action_size)
     initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5]]
-    initPosObstRobot = [[1.5, 1.5], [3.5, 1.5], [3.5, 3.5], [1.5, 3.5], [4, 2], [3, 4], [1, 3], [2, 1]]
+    initPosObstRobot = [[1.5, 1.5], [3.5, 3.5], [3.5, 1.5],  [1.5, 3.5], [4, 2], [3, 4], [1, 3], [2, 1]]
     rList = []
-
     rospy.init_node('circler', anonymous=True)
     rate = rospy.Rate(50) #hz
+    f = open("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/log/log" + str(mainRobotNumber) + "robots_RRL.txt", 'w')
 
     posObstRobot_pub = []
     posObstRobot_msg = []
@@ -251,12 +250,11 @@ def main():
         posObstRobot_msg[i].pose.position.z = 0
         posObstRobot_pub[i].publish(posObstRobot_msg[i])
     time.sleep(10)
-    elapsed = 0
-    fps = 0
+
     for e in range(num_episodes):
-        start = time.time()
         done = False
         frame = 0
+        ckTime = 0
         rospy.logwarn("Episode %d Starts!", e)
         rospy.logwarn(datetime.datetime.now().strftime('%H:%M:%S'))
         for i in range(0, mainRobotNumber):
@@ -270,22 +268,32 @@ def main():
             goalReached = goalReached + [False]
 
         while not done:
+            start = time.time()
             frame += 1
+            tmpobst_coordinates = []
+            obst_coordinates = []
+            mainRobot_coordinates = []
             # macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [posMainRobot_msg.pose.position.x, posMainRobot_msg.pose.position.y], -1)
             # macroPolicy = macroAgent.get_action(macroState)
+            for tmpRobNo in range(0, mainRobotNumber):
+                model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
+                mainRobot_coordinates = mainRobot_coordinates + [model_coordinates("mainRobot" + str(tmpRobNo), "")]
+
+            for tmpObsNo in range(0, obsNumber):
+                tmpobst_coordinates = tmpobst_coordinates + [model_coordinates("obsRobot" + str(tmpObsNo), "")]
+
             for curRobNo in range(0, mainRobotNumber):
                 tmpAction = []
-                obst_coordinates = []
-                model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
-                object_coordinates = model_coordinates("mainRobot" + str(curRobNo), "")
-                for i in range(0, obsNumber):
-                    obst_coordinates = obst_coordinates + [model_coordinates("obsRobot" + str(i), "")]
+                obst_coordinates = tmpobst_coordinates
+                object_coordinates = mainRobot_coordinates[curRobNo]
+                
                 for i in range(0, mainRobotNumber):
                     if i != curRobNo:
-                        obst_coordinates = obst_coordinates + [model_coordinates("mainRobot" + str(i), "")]
+                        obst_coordinates = obst_coordinates + [mainRobot_coordinates[i]]
                 quaternion = (object_coordinates.pose.orientation.x, object_coordinates.pose.orientation.y, object_coordinates.pose.orientation.z, object_coordinates.pose.orientation.w)
                 euler = euler_from_quaternion(quaternion)
                 yaw = euler[2]
+                initPosMainRobot[curRobNo] = [object_coordinates.pose.position.x, object_coordinates.pose.position.y]
                 [rangeObsNumber, rangeObsPos, _] = rangeFinder(obst_coordinates, initPosMainRobot[curRobNo])
                 for i in range(0, rangeObsNumber):
                     state = stateGenerator(rangeObsPos, [object_coordinates.pose.position.x, object_coordinates.pose.position.y], i)
@@ -335,11 +343,10 @@ def main():
 
                 twistMainRobot_msg[curRobNo].linear.x = linearX
                 twistMainRobot_msg[curRobNo].angular.z = angularZ # * 0.5
-                twistMainRobot_pub[curRobNo].publish(twistMainRobot_msg[curRobNo])
 
                 collisionFlag = 0
                 # next_macroState = stateGenerator([posObstRobot_msg[minIndex].pose.position.x, posObstRobot_msg[minIndex].pose.position.y], [object_coordinates.pose.position.x, object_coordinates.pose.position.y], -1)
-                initPosMainRobot[curRobNo] = [object_coordinates.pose.position.x, object_coordinates.pose.position.y]
+
                 if(math.sqrt((object_coordinates.pose.position.x - goalPos[curRobNo][0])**2 + (object_coordinates.pose.position.y - goalPos[curRobNo][1])**2) <= 2 * agentRadius):
                     if goalReached[curRobNo] == False:
                         rospy.logwarn(str(curRobNo) + " Robot has reached to the goal!")
@@ -359,6 +366,8 @@ def main():
                             rospy.logerr("Collision with a main robot!")
                         collisionFlag = -1
                         done = True
+                twistMainRobot_pub[curRobNo].publish(twistMainRobot_msg[curRobNo])
+ 
             tmpCount = 1
             for i in range(0, mainRobotNumber):
                 tmpCount = tmpCount * goalReached[i]
@@ -385,18 +394,26 @@ def main():
                 twistObstRobot_pub[i].publish(twistObstRobot_msg[i])
 
             rate.sleep()
+            final = time.time()
+            ckTime = (ckTime * (frame - 1) + final - start) / frame
+
         # if e % 50 == 0:
             # macroAgent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
             # macroAgent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
-        final = time.time()
-        fps = (fps * e + frame / (final - start)) / (e + 1)
-        if collisionFlag != -1:
-            elapsed = (elapsed * (sum(rList) - 1) + (final - start)) / sum(rList)
+        # fps = (fps * e + frame / (final - start)) / (e + 1)
+        # if collisionFlag != -1:
+            # elapsed = (elapsed * (sum(rList) - 1) + (final - start)) / sum(rList)
         rospy.logwarn("Percent of successful episodes: %f %%", 100.0 * sum(rList)/(e + 1))
-        rospy.logwarn("Elapsed Time: %f s", final - start)
-        rospy.logwarn("Frame per Second: %f fps", frame / (final - start))
-        rospy.logwarn("Average Time: %f s", elapsed)
-        rospy.logwarn("Average FPS: %f fps", fps)
+        rospy.logwarn("Average Processing Time: %f s", ckTime)
+        data = "Episode_%d_%f \n" % (e, ckTime)
+        f.write(data)
+        rospy.logwarn("Data Saved")
+        rospy.logwarn("=====================================================================")
+        # rospy.logwarn("Elapsed Time: %f s", final - start)
+        # rospy.logwarn("Frame per Second: %f fps", frame / (final - start))
+        # rospy.logwarn("Average Time: %f s", elapsed)
+        # rospy.logwarn("Average FPS: %f fps", fps)
+    f.close()
 if __name__ == '__main__':
     try:
         main()

@@ -43,18 +43,18 @@ def takeAction(desiredVector, robotYaw):
             angularDiff = angularDiff - math.pi * 2
         elif angularDiff < -math.pi:
             angularDiff = angularDiff + math.pi * 2
-        # if angularDiff > 0:
-        #     linearX = -2 * maxSpeed / math.pi * angularDiff + maxSpeed
-        # else:
-        #     linearX = 2 * maxSpeed / math.pi * angularDiff + maxSpeed
-        linearX = -2 * maxSpeed / (math.pi * math.pi) * (angularDiff * angularDiff) + maxSpeed
+        if angularDiff > 0:
+            linearX = -2 * maxSpeed / math.pi * angularDiff + maxSpeed
+        else:
+            linearX = 2 * maxSpeed / math.pi * angularDiff + maxSpeed
+        # linearX = -2 * maxSpeed / (math.pi * math.pi) * (angularDiff * angularDiff) + maxSpeed
         if abs(angularDiff) == math.pi:
             angularZ = 0
-        elif abs(angularDiff) <= math.pi / math.sqrt(2):
+        elif abs(angularDiff) <= math.pi / 2:#math.pi / math.sqrt(2):
             angularZ = angularDiff * angularVelocityCalibration
-        elif angularDiff > math.pi / math.sqrt(2):
+        elif angularDiff > math.pi / 2:#math.pi / math.sqrt(2):
             angularZ = (angularDiff - math.pi) * angularVelocityCalibration
-        elif angularDiff < -1 * math.pi / math.sqrt(2):
+        elif angularDiff < -1 * math.pi / 2:#-1 * math.pi / math.sqrt(2):
             angularZ = (angularDiff + math.pi) * angularVelocityCalibration
 
     return [linearX, angularZ]
@@ -62,6 +62,7 @@ def takeAction(desiredVector, robotYaw):
 def main():
     initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5]]
     rList = []
+    f = open("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/log/log" + str(mainRobotNumber) + "robots_RVO.txt", 'w')
 
     rospy.init_node('circler', anonymous=True)
     rate = rospy.Rate(50) #hz
@@ -111,7 +112,9 @@ def main():
         V = [[0, 0] for i in xrange(len(initPosMainRobot))]
         V_max = [2.0 for i in xrange(len(initPosMainRobot))]
         frame = 0
+        ckTime = 0
         while not done:
+            start = time.time()
             frame += 1
             object_coordinates = []
             X = []
@@ -159,15 +162,21 @@ def main():
                     rList.append(0)
                 initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5]]
             rate.sleep()
-        final = time.time()
+            final = time.time()
+            ckTime = (ckTime * (frame - 1) + final - start) / frame
+            
         fps = (fps * e + frame / (final - start)) / (e + 1)
         if collisionFlag != -1:
             elapsed = (elapsed * (sum(rList) - 1) + final - start) / sum(rList)
         rospy.logwarn("Percent of successful episodes: %f %%", 100.0 * sum(rList)/(e + 1))
-        rospy.logwarn("Elapsed Time: %f s", final - start)
-        rospy.logwarn("Frame per Second: %f fps", frame / (final - start))
-        rospy.logwarn("Average Time: %f s", elapsed)
-        rospy.logwarn("Average FPS: %f fps", fps)
+        rospy.logwarn("Average Processing Time: %f", ckTime)
+        data = "Episode_%d_%f \n" % (e, ckTime)
+        f.write(data)
+        # rospy.logwarn("Elapsed Time: %f s", final - start)
+        # rospy.logwarn("Frame per Second: %f fps", frame / (final - start))
+        # rospy.logwarn("Average Time: %f s", elapsed)
+        # rospy.logwarn("Average FPS: %f fps", fps)
+    f.close()
 if __name__ == '__main__':
     try:
         main()
