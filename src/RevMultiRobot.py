@@ -19,12 +19,12 @@ import time
 num_episodes = 201
 obstacleRadius = 0.18
 agentRadius = 0.18
-obsNumber = 2
-mainRobotNumber = 4
+obsNumber = 0
+mainRobotNumber = 8
 state_size = 2
 action_size = 9
 boundaryRadius = 0.85
-goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0]] 
+goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0], [0, 1.25], [0, 3.75], [5, 1.25], [5, 3.75]] 
 moveObstacles = True
 
 # A2C(Advantage Actor-Critic) agent
@@ -182,18 +182,18 @@ def takeAction(desiredHeading, robotYaw):
         elif angularDiff < -math.pi:
             angularDiff = angularDiff + math.pi * 2
 
-        # if angularDiff >= 0:
-            # linearX = -4 / math.pi * angularDiff + 2.0
-        # elif angularDiff < 0:
-            # linearX = 4 / math.pi * angularDiff + 2.0
-        linearX = -2 * maxSpeed / (math.pi * math.pi) * (angularDiff * angularDiff) + maxSpeed
+        if angularDiff >= 0:
+            linearX = -2 * maxSpeed / math.pi * angularDiff + maxSpeed
+        elif angularDiff < 0:
+            linearX = 2 * maxSpeed / math.pi * angularDiff + maxSpeed
+        # linearX = -2 * maxSpeed / (math.pi * math.pi) * (angularDiff * angularDiff) + maxSpeed
         if abs(angularDiff) == math.pi:
             angularZ = 0
-        elif abs(angularDiff) <= math.pi / math.sqrt(2):
+        elif abs(angularDiff) <= math.pi / 2:#math.sqrt(2):
             angularZ = angularDiff * angularVelocityCalibration
-        elif angularDiff > math.pi / math.sqrt(2):
+        elif angularDiff > math.pi / 2:#math.sqrt(2):
             angularZ = (angularDiff - math.pi) * angularVelocityCalibration
-        elif angularDiff < -1 * math.pi / math.sqrt(2):
+        elif angularDiff < -1 * math.pi / 2:#math.sqrt(2):
             angularZ = (angularDiff + math.pi) * angularVelocityCalibration
         if desiredHeading == 8:
             linearX = 0
@@ -203,12 +203,12 @@ def takeAction(desiredHeading, robotYaw):
 def main():
     agent = A2CAgent(state_size, action_size)
     # macroAgent = A2CAgent(state_size, action_size)
-    initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5]]
+    initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5], [5, 3.75], [5, 1.25], [0, 1.25], [0, 3.75]]
     initPosObstRobot = [[1.5, 1.5], [3.5, 3.5], [3.5, 1.5],  [1.5, 3.5], [4, 2], [3, 4], [1, 3], [2, 1]]
     rList = []
     rospy.init_node('circler', anonymous=True)
     rate = rospy.Rate(50) #hz
-    f = open("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/log/log" + str(mainRobotNumber) + "robots_RRL.txt", 'w')
+    f = open("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/log/log" + str(mainRobotNumber) + "robots" + str(obsNumber) + "obstacles_RRL" + datetime.datetime.now().strftime('%y%m%d') + ".txt", 'w')
 
     posObstRobot_pub = []
     posObstRobot_msg = []
@@ -250,18 +250,20 @@ def main():
         posObstRobot_msg[i].pose.position.z = 0
         posObstRobot_pub[i].publish(posObstRobot_msg[i])
     time.sleep(10)
-
+    AvgTime = 0
     for e in range(num_episodes):
         done = False
         frame = 0
         ckTime = 0
+        elapsed = 0
+        
         rospy.logwarn("Episode %d Starts!", e)
         rospy.logwarn(datetime.datetime.now().strftime('%H:%M:%S'))
         for i in range(0, mainRobotNumber):
             [posMainRobot_msg[i].pose.position.x, posMainRobot_msg[i].pose.position.y] = initPosMainRobot[i]
             posMainRobot_msg[i].pose.position.z = 0
             posMainRobot_pub[i].publish(posMainRobot_msg[i])
-
+        epStart = time.time()
         # Initialize goalReached flag
         goalReached = []
         for i in range(0, mainRobotNumber):
@@ -384,7 +386,7 @@ def main():
                 # macroAgent.train_model(macroState, action, reward, next_macroState, done)
                 # macroState = next_macroState
 
-                initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5]]
+                initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5], [5, 3.75], [5, 1.25], [0, 1.25], [0, 3.75]]
                 for i in range(0, obsNumber):
                     [posObstRobot_msg[i].pose.position.x, posObstRobot_msg[i].pose.position.y] = initPosObstRobot[i]
                     posObstRobot_msg[i].pose.position.z = 0
@@ -401,18 +403,22 @@ def main():
             # macroAgent.actor.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Actor_Macro.h5")
             # macroAgent.critic.save_weights("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/Critic_Macro.h5")
         # fps = (fps * e + frame / (final - start)) / (e + 1)
-        # if collisionFlag != -1:
-            # elapsed = (elapsed * (sum(rList) - 1) + (final - start)) / sum(rList)
+        epTerminate = time.time()
+        if e != 0:
+            if collisionFlag != -1 and sum(rList) != 0:
+                elapsed = (elapsed * (sum(rList) - 1) + (epTerminate - epStart)) / sum(rList)
         rospy.logwarn("Percent of successful episodes: %f %%", 100.0 * sum(rList)/(e + 1))
         rospy.logwarn("Average Processing Time: %f s", ckTime)
-        data = "Episode_%d_%f \n" % (e, ckTime)
+        data = "Episode_%d_%f_avgTime_%f_%d \n" % (e, ckTime, epTerminate - epStart, collisionFlag)
         f.write(data)
+        rospy.logwarn("Elapsed Time: %f s", epTerminate - epStart)
         rospy.logwarn("Data Saved")
-        rospy.logwarn("=====================================================================")
-        # rospy.logwarn("Elapsed Time: %f s", final - start)
+        AvgTime = (AvgTime * e + epTerminate - epStart) / (e + 1)
+        rospy.logwarn("Average Elapsed Time: %f s", AvgTime)
         # rospy.logwarn("Frame per Second: %f fps", frame / (final - start))
-        # rospy.logwarn("Average Time: %f s", elapsed)
+        rospy.logwarn("Average Time: %f s", elapsed)
         # rospy.logwarn("Average FPS: %f fps", fps)
+        rospy.logwarn("=====================================================================")
     f.close()
 if __name__ == '__main__':
     try:

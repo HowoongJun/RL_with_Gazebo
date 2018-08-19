@@ -18,8 +18,8 @@ import time
 num_episodes = 201
 agentRadius = 0.17
 obsNumber = 0
-mainRobotNumber = 4
-goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0]] 
+mainRobotNumber = 12
+goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0], [0, 1.25], [0, 3.75], [5, 1.25], [5, 3.75]] 
 moveObstacles = True
 
 ws_model = dict()
@@ -60,18 +60,30 @@ def takeAction(desiredVector, robotYaw):
     return [linearX, angularZ]
 
 def main():
-    initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5]]
+    initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5], [5, 3.75], [5, 1.25], [0, 1.25], [0, 3.75]]
+    initPosObstRobot = [[1.5, 1.5], [3.5, 3.5], [3.5, 1.5],  [1.5, 3.5], [4, 2], [3, 4], [1, 3], [2, 1]]
+    allRobots = []
+
+    for i in range(0, mainRobotNumber):
+        allRobots = allRobots + [initPosMainRobot[i]]
+    for i in range(0, obsNumber):
+        allRobots = allRobots + [initPosObstRobot[i]]
+
     rList = []
-    f = open("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/log/log" + str(mainRobotNumber) + "robots_RVO.txt", 'w')
+    f = open("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/log/log" + str(mainRobotNumber) + "robots" + str(obsNumber) + "obstacles_RVO" + datetime.datetime.now().strftime('%y%m%d') + ".txt", 'w')
 
     rospy.init_node('circler', anonymous=True)
     rate = rospy.Rate(50) #hz
 
     posMainRobot_pub = []
     posMainRobot_msg = []
+    posObstRobot_pub = []
+    posObstRobot_msg = []
 
     twistMainRobot_pub = []
     twistMainRobot_msg = []
+    twistObstRobot_pub = []
+    twistObstRobot_msg = []
 
     rospy.logwarn("Loading !!!")
 
@@ -90,9 +102,19 @@ def main():
         twistMainRobot_msg[i].linear.z = 0
         twistMainRobot_msg[i].angular.x = 0
         twistMainRobot_msg[i].angular.y = 0
-        twistMainRobot_msg[i].angular.z = 0    
+        twistMainRobot_msg[i].angular.z = 0
+    for i in range(0, obsNumber):
+        posObstRobot_pub = posObstRobot_pub + [rospy.Publisher('gazebo/set_model_state', ModelState, queue_size = 10)]
+        twistObstRobot_pub = twistObstRobot_pub + [rospy.Publisher('obsRobot' + str(i) + '/cmd_vel', Twist, queue_size=10)]
+        posObstRobot_msg.append(ModelState())
+        twistObstRobot_msg.append(Twist())
+        
+        posObstRobot_msg[i].model_name = "obsRobot" + str(i)
+        [posObstRobot_msg[i].pose.position.x, posObstRobot_msg[i].pose.position.y] = initPosObstRobot[i]
+        posObstRobot_msg[i].pose.position.z = 0
+        posObstRobot_pub[i].publish(posObstRobot_msg[i])
 
-    time.sleep(5)
+    time.sleep(10)
     fps = 0
     elapsed = 0
     for e in range(num_episodes):
@@ -104,26 +126,54 @@ def main():
             [posMainRobot_msg[i].pose.position.x, posMainRobot_msg[i].pose.position.y] = initPosMainRobot[i]
             posMainRobot_msg[i].pose.position.z = 0
             posMainRobot_pub[i].publish(posMainRobot_msg[i])
-
+            twistMainRobot_msg[i].linear.x = 0
+            twistMainRobot_msg[i].angular.z = 0
+            twistMainRobot_pub[i].publish(twistMainRobot_msg[i])
+        
         # Initialize goalReached flag
         goalReached = []
         for i in range(0, mainRobotNumber):
             goalReached = goalReached + [False]
-        V = [[0, 0] for i in xrange(len(initPosMainRobot))]
-        V_max = [2.0 for i in xrange(len(initPosMainRobot))]
+        V = [[0, 0] for i in xrange(len(allRobots))]
+        V_max = [2.0 for i in xrange(len(allRobots))]
         frame = 0
         ckTime = 0
         while not done:
             start = time.time()
             frame += 1
             object_coordinates = []
+            obst_coordinates = []
             X = []
+            overallGoal = []
             for i in range(0, mainRobotNumber):
                 model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
                 object_coordinates = object_coordinates + [model_coordinates("mainRobot" + str(i), "")]
                 X = X + [[object_coordinates[i].pose.position.x, object_coordinates[i].pose.position.y]]
-            V_des = compute_V_des(X, goalPos, V_max)
+                overallGoal = overallGoal + [goalPos[i]]
+            for i in range(0, obsNumber):
+                model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
+                obst_coordinates = obst_coordinates + [model_coordinates("obsRobot" + str(i), "")]
+                X = X + [[obst_coordinates[i].pose.position.x, obst_coordinates[i].pose.position.y]]
+                overallGoal = overallGoal + [[random.randrange(-2, 3), random.randrange(-2, 3)]]
+            V_des = compute_V_des(X, overallGoal, V_max)
+            for i in range(mainRobotNumber, mainRobotNumber + obsNumber):
+                V_des[i] = overallGoal[i]
             V = RVO_update(X, V_des, V, ws_model)
+
+            # Move obstacles
+            for obsRobNo in range(0, obsNumber):
+                quaternion = (obst_coordinates[obsRobNo].pose.orientation.x, obst_coordinates[obsRobNo].pose.orientation.y, obst_coordinates[obsRobNo].pose.orientation.z, obst_coordinates[obsRobNo].pose.orientation.w)
+                euler = euler_from_quaternion(quaternion)
+                yaw = euler[2]
+                linearX = 0
+                angularZ = 0
+
+                [linearX, angularZ] = takeAction(V_des[obsRobNo + mainRobotNumber], yaw)
+                twistObstRobot_msg[obsRobNo].linear.x = linearX
+                twistObstRobot_msg[obsRobNo].angular.z = angularZ
+                twistObstRobot_pub[obsRobNo].publish(twistObstRobot_msg[obsRobNo])
+                
+            # Move Main robots
             for curRobNo in range(0, mainRobotNumber):
                 quaternion = (object_coordinates[curRobNo].pose.orientation.x, object_coordinates[curRobNo].pose.orientation.y, object_coordinates[curRobNo].pose.orientation.z, object_coordinates[curRobNo].pose.orientation.w)
                 euler = euler_from_quaternion(quaternion)
@@ -147,9 +197,15 @@ def main():
                 for i in range(0, mainRobotNumber):
                     if i != curRobNo:
                         if math.sqrt((object_coordinates[curRobNo].pose.position.x - object_coordinates[i].pose.position.x)**2 + (object_coordinates[curRobNo].pose.position.y - object_coordinates[i].pose.position.y)**2) < 2*agentRadius:
-                            rospy.logerr("Collision !")
+                            rospy.logerr("Collision with a main robot")
                             collisionFlag = -1
                             done = True
+                for i in range(0, obsNumber):
+                    if math.sqrt((obst_coordinates[i].pose.position.x - object_coordinates[curRobNo].pose.position.x)**2 + (obst_coordinates[i].pose.position.y - object_coordinates[curRobNo].pose.position.y)**2) < 2 * agentRadius:
+                        rospy.logerr("Collision with an Obstacle")
+                        collisionFlag = -1
+                        done = True
+            
             tmpCount = 1
             for i in range(0, mainRobotNumber):
                 tmpCount = tmpCount * goalReached[i]
@@ -160,15 +216,20 @@ def main():
             if done:
                 if collisionFlag == -1:
                     rList.append(0)
-                initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5]]
+                initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5], [5, 3.75], [5, 1.25], [0, 1.25], [0, 3.75]]
+                for i in range(0, obsNumber):
+                    [posObstRobot_msg[i].pose.position.x, posObstRobot_msg[i].pose.position.y] = initPosObstRobot[i]
+                    posObstRobot_msg[i].pose.position.z = 0
+                    posObstRobot_pub[i].publish(posObstRobot_msg[i])
             rate.sleep()
             final = time.time()
             ckTime = (ckTime * (frame - 1) + final - start) / frame
             
-        fps = (fps * e + frame / (final - start)) / (e + 1)
-        if collisionFlag != -1:
-            elapsed = (elapsed * (sum(rList) - 1) + final - start) / sum(rList)
-        rospy.logwarn("Percent of successful episodes: %f %%", 100.0 * sum(rList)/(e + 1))
+        # fps = (fps * e + frame / (final - start)) / (e + 1)
+        if e != 0:
+            if collisionFlag != -1 and sum(rList) != 0:
+                elapsed = (elapsed * (sum(rList) - 1) + final - start) / sum(rList)
+            rospy.logwarn("Percent of successful episodes: %f %%", 100.0 * sum(rList)/(e + 1))
         rospy.logwarn("Average Processing Time: %f", ckTime)
         data = "Episode_%d_%f \n" % (e, ckTime)
         f.write(data)
@@ -176,6 +237,7 @@ def main():
         # rospy.logwarn("Frame per Second: %f fps", frame / (final - start))
         # rospy.logwarn("Average Time: %f s", elapsed)
         # rospy.logwarn("Average FPS: %f fps", fps)
+        rospy.logwarn("=====================================================================")
     f.close()
 if __name__ == '__main__':
     try:
