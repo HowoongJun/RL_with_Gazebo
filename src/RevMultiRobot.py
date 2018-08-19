@@ -169,7 +169,7 @@ def takeAction(desiredHeading, robotYaw):
         desiredHeading = 7
     elif desiredHeading == 7:
         desiredHeading = 2
-
+# 
     desiredDegree = action2degree(desiredHeading)
 
     if desiredDegree == robotYaw:
@@ -182,18 +182,22 @@ def takeAction(desiredHeading, robotYaw):
         elif angularDiff < -math.pi:
             angularDiff = angularDiff + math.pi * 2
 
-        if angularDiff >= 0:
-            linearX = -2 * maxSpeed / math.pi * angularDiff + maxSpeed
-        elif angularDiff < 0:
-            linearX = 2 * maxSpeed / math.pi * angularDiff + maxSpeed
-        # linearX = -2 * maxSpeed / (math.pi * math.pi) * (angularDiff * angularDiff) + maxSpeed
+        # if angularDiff >= 0:
+            # linearX = -2 * maxSpeed / math.pi * angularDiff + maxSpeed
+        # elif angularDiff < 0:
+            # linearX = 2 * maxSpeed / math.pi * angularDiff + maxSpeed
+        linearX = -2 * maxSpeed / (math.pi * math.pi) * (angularDiff * angularDiff) + maxSpeed
         if abs(angularDiff) == math.pi:
+            linearX = -maxSpeed
             angularZ = 0
-        elif abs(angularDiff) <= math.pi / 2:#math.sqrt(2):
+        elif abs(angularDiff) <= math.pi / math.sqrt(2):
+            # linearX = maxSpeed
             angularZ = angularDiff * angularVelocityCalibration
-        elif angularDiff > math.pi / 2:#math.sqrt(2):
+        elif angularDiff > math.pi / math.sqrt(2):
+            # linearX = -maxSpeed
             angularZ = (angularDiff - math.pi) * angularVelocityCalibration
-        elif angularDiff < -1 * math.pi / 2:#math.sqrt(2):
+        elif angularDiff < -1 * math.pi / math.sqrt(2):
+            # linearX = -maxSpeed
             angularZ = (angularDiff + math.pi) * angularVelocityCalibration
         if desiredHeading == 8:
             linearX = 0
