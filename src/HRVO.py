@@ -18,7 +18,7 @@ import time
 num_episodes = 201
 agentRadius = 0.17
 obsNumber = 0
-mainRobotNumber = 12
+mainRobotNumber = 4
 goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0], [0, 1.25], [0, 3.75], [5, 1.25], [5, 3.75]] 
 moveObstacles = True
 
@@ -47,18 +47,18 @@ def takeAction(desiredVector, robotYaw):
         #     linearX = -2 * maxSpeed / math.pi * angularDiff + maxSpeed
         # else:
         #     linearX = 2 * maxSpeed / math.pi * angularDiff + maxSpeed
-        # linearX = -2 * maxSpeed / (math.pi * math.pi) * (angularDiff * angularDiff) + maxSpeed
+        linearX = -2 * maxSpeed / (math.pi * math.pi) * (angularDiff * angularDiff) + maxSpeed
         if abs(angularDiff) == math.pi:
-            linearX = maxSpeed
+            # linearX = maxSpeed
             angularZ = 0
-        elif abs(angularDiff) <= math.pi / 2:# math.sqrt(2):
-            linearX = maxSpeed
+        elif abs(angularDiff) <= math.pi / math.sqrt(2):
+            # linearX = maxSpeed
             angularZ = angularDiff * angularVelocityCalibration
-        elif angularDiff > math.pi / 2:#math.sqrt(2):
-            linearX = -maxSpeed
+        elif angularDiff > math.pi / math.sqrt(2):
+            # linearX = -maxSpeed
             angularZ = (angularDiff - math.pi) * angularVelocityCalibration
-        elif angularDiff < -1 * math.pi / 2:# math.sqrt(2):
-            linearX = -maxSpeed
+        elif angularDiff < -1 * math.pi / math.sqrt(2):
+            # linearX = -maxSpeed
             angularZ = (angularDiff + math.pi) * angularVelocityCalibration
 
     return [linearX, angularZ]
