@@ -19,13 +19,16 @@ import time
 num_episodes = 201
 obstacleRadius = 0.18
 agentRadius = 0.18
-obsNumber = 0
-mainRobotNumber = 12
+obsNumber = 4
+mainRobotNumber = 4
 state_size = 2
 action_size = 9
 boundaryRadius = 0.85
 goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0], [0, 1.25], [0, 3.75], [5, 1.25], [5, 3.75]] 
 moveObstacles = True
+
+# mode = 0: Const, mode = 1: Linear, mode = 2: Quad
+mode = 0
 
 # A2C(Advantage Actor-Critic) agent
 class A2CAgent:
@@ -181,23 +184,32 @@ def takeAction(desiredHeading, robotYaw):
             angularDiff = angularDiff - math.pi * 2
         elif angularDiff < -math.pi:
             angularDiff = angularDiff + math.pi * 2
-
-        # if angularDiff >= 0:
-        #     linearX = -2 * maxSpeed / math.pi * angularDiff + maxSpeed
-        # elif angularDiff < 0:
-        #     linearX = 2 * maxSpeed / math.pi * angularDiff + maxSpeed
-        linearX = -2 * maxSpeed / (math.pi * math.pi) * (angularDiff * angularDiff) + maxSpeed
+        delimeter = 2
+        if mode == 1:
+            delimeter = 2
+            if angularDiff >= 0:
+                linearX = -2 * maxSpeed / math.pi * angularDiff + maxSpeed
+            elif angularDiff < 0:
+                linearX = 2 * maxSpeed / math.pi * angularDiff + maxSpeed
+        elif mode == 2:
+            delimeter = math.sqrt(2)
+            linearX = -2 * maxSpeed / (math.pi * math.pi) * (angularDiff * angularDiff) + maxSpeed
+        
         if abs(angularDiff) == math.pi:
-            # linearX = -maxSpeed
+            if mode == 0:
+                linearX = -maxSpeed
             angularZ = 0
-        elif abs(angularDiff) <= math.pi / math.sqrt(2):
-            # linearX = maxSpeed
+        elif abs(angularDiff) <= math.pi / delimeter:
+            if mode == 0:
+                linearX = maxSpeed
             angularZ = angularDiff * angularVelocityCalibration
-        elif angularDiff > math.pi / math.sqrt(2):
-            # linearX = -maxSpeed
+        elif angularDiff > math.pi / delimeter:
+            if mode == 0:
+                linearX = -maxSpeed
             angularZ = (angularDiff - math.pi) * angularVelocityCalibration
-        elif angularDiff < -1 * math.pi / math.sqrt(2):
-            # linearX = -maxSpeed
+        elif angularDiff < -1 * math.pi / delimeter:
+            if mode == 0:
+                linearX = -maxSpeed
             angularZ = (angularDiff + math.pi) * angularVelocityCalibration
         if desiredHeading == 8:
             linearX = 0
@@ -212,7 +224,14 @@ def main():
     rList = []
     rospy.init_node('circler', anonymous=True)
     rate = rospy.Rate(50) #hz
-    f = open("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/log/log" + str(mainRobotNumber) + "robots" + str(obsNumber) + "obstacles_RRL" + datetime.datetime.now().strftime('%y%m%d') + ".txt", 'w')
+    tmpStr = ""
+    if mode == 0:
+        tmpStr = "Const"
+    elif mode == 1:
+        tmpStr = "Linear"
+    elif mode == 2:
+        tmpStr = "Quad"
+    f = open("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/log/log" + str(mainRobotNumber) + "robots" + str(obsNumber) + "obstacles_RRL_" + tmpStr + "_" + datetime.datetime.now().strftime('%y%m%d') + ".txt", 'w')
 
     posObstRobot_pub = []
     posObstRobot_msg = []
@@ -241,7 +260,7 @@ def main():
         twistMainRobot_msg[i].linear.z = 0
         twistMainRobot_msg[i].angular.x = 0
         twistMainRobot_msg[i].angular.y = 0
-        twistMainRobot_msg[i].angular.z = 0    
+        twistMainRobot_msg[i].angular.z = 0
 
     for i in range(0, obsNumber):
         posObstRobot_pub = posObstRobot_pub + [rospy.Publisher('gazebo/set_model_state', ModelState, queue_size = 10)]
@@ -253,6 +272,13 @@ def main():
         [posObstRobot_msg[i].pose.position.x, posObstRobot_msg[i].pose.position.y] = initPosObstRobot[i]
         posObstRobot_msg[i].pose.position.z = 0
         posObstRobot_pub[i].publish(posObstRobot_msg[i])
+        twistObstRobot_msg[i].linear.x = 0
+        twistObstRobot_msg[i].linear.y = 0
+        twistObstRobot_msg[i].linear.z = 0
+        twistObstRobot_msg[i].angular.x = 0
+        twistObstRobot_msg[i].angular.y = 0
+        twistObstRobot_msg[i].angular.z = 0
+
     time.sleep(10)
     AvgTime = 0
     for e in range(num_episodes):
@@ -266,7 +292,19 @@ def main():
         for i in range(0, mainRobotNumber):
             [posMainRobot_msg[i].pose.position.x, posMainRobot_msg[i].pose.position.y] = initPosMainRobot[i]
             posMainRobot_msg[i].pose.position.z = 0
+            posMainRobot_msg[0].pose.orientation.z = 0
+            posMainRobot_msg[1].pose.orientation.z = 1
+            posMainRobot_msg[2].pose.orientation.z = 1
+            posMainRobot_msg[3].pose.orientation.z = 0
             posMainRobot_pub[i].publish(posMainRobot_msg[i])
+        for i in range(0, obsNumber):
+            [posObstRobot_msg[i].pose.position.x, posObstRobot_msg[i].pose.position.y] = initPosObstRobot[i]
+            posObstRobot_msg[i].pose.position.z = 0
+            posObstRobot_msg[0].pose.orientation.z = 1
+            posObstRobot_msg[1].pose.orientation.z = 0
+            posObstRobot_msg[2].pose.orientation.z = 0
+            posObstRobot_msg[3].pose.orientation.z = 1
+            posObstRobot_pub[i].publish(posObstRobot_msg[i])
         epStart = time.time()
         # Initialize goalReached flag
         goalReached = []

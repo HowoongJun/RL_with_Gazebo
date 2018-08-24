@@ -17,10 +17,13 @@ import time
 # Environment Setting
 num_episodes = 201
 agentRadius = 0.17
-obsNumber = 0
+obsNumber = 4
 mainRobotNumber = 4
 goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0], [0, 1.25], [0, 3.75], [5, 1.25], [5, 3.75]] 
 moveObstacles = True
+
+# mode = 0: Const, mode = 1: Linear, mode = 2: Quad
+mode = 0
 
 ws_model = dict()
 ws_model['robot_radius'] = agentRadius
@@ -43,24 +46,33 @@ def takeAction(desiredVector, robotYaw):
             angularDiff = angularDiff - math.pi * 2
         elif angularDiff < -math.pi:
             angularDiff = angularDiff + math.pi * 2
-        # if angularDiff > 0:
-        #     linearX = -2 * maxSpeed / math.pi * angularDiff + maxSpeed
-        # else:
-        #     linearX = 2 * maxSpeed / math.pi * angularDiff + maxSpeed
-        linearX = -2 * maxSpeed / (math.pi * math.pi) * (angularDiff * angularDiff) + maxSpeed
+        delimeter = 2
+        if mode == 1:
+            delimeter = 2
+            if angularDiff >= 0:
+                linearX = -2 * maxSpeed / math.pi * angularDiff + maxSpeed
+            elif angularDiff < 0:
+                linearX = 2 * maxSpeed / math.pi * angularDiff + maxSpeed
+        elif mode == 2:
+            delimeter = math.sqrt(2)
+            linearX = -2 * maxSpeed / (math.pi * math.pi) * (angularDiff * angularDiff) + maxSpeed
+        
         if abs(angularDiff) == math.pi:
-            # linearX = maxSpeed
+            if mode == 0:
+                linearX = -maxSpeed
             angularZ = 0
-        elif abs(angularDiff) <= math.pi / math.sqrt(2):
-            # linearX = maxSpeed
+        elif abs(angularDiff) <= math.pi / delimeter:
+            if mode == 0:
+                linearX = maxSpeed
             angularZ = angularDiff * angularVelocityCalibration
-        elif angularDiff > math.pi / math.sqrt(2):
-            # linearX = -maxSpeed
+        elif angularDiff > math.pi / delimeter:
+            if mode == 0:
+                linearX = -maxSpeed
             angularZ = (angularDiff - math.pi) * angularVelocityCalibration
-        elif angularDiff < -1 * math.pi / math.sqrt(2):
-            # linearX = -maxSpeed
+        elif angularDiff < -1 * math.pi / delimeter:
+            if mode == 0:
+                linearX = -maxSpeed
             angularZ = (angularDiff + math.pi) * angularVelocityCalibration
-
     return [linearX, angularZ]
 
 def main():
@@ -72,9 +84,14 @@ def main():
         allRobots = allRobots + [initPosMainRobot[i]]
     for i in range(0, obsNumber):
         allRobots = allRobots + [initPosObstRobot[i]]
-
+    if mode == 0:
+        tmpStr = "Const"
+    elif mode == 1:
+        tmpStr = "Linear"
+    elif mode == 2:
+        tmpStr = "Quad"
     rList = []
-    f = open("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/log/log" + str(mainRobotNumber) + "robots" + str(obsNumber) + "obstacles_RVO" + datetime.datetime.now().strftime('%y%m%d') + ".txt", 'w')
+    f = open("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/log/log" + str(mainRobotNumber) + "robots" + str(obsNumber) + "obstacles_RVO_" + tmpStr + "_" + datetime.datetime.now().strftime('%y%m%d') + ".txt", 'w')
 
     rospy.init_node('circler', anonymous=True)
     rate = rospy.Rate(50) #hz
@@ -117,6 +134,12 @@ def main():
         [posObstRobot_msg[i].pose.position.x, posObstRobot_msg[i].pose.position.y] = initPosObstRobot[i]
         posObstRobot_msg[i].pose.position.z = 0
         posObstRobot_pub[i].publish(posObstRobot_msg[i])
+        twistObstRobot_msg[i].linear.x = 0
+        twistObstRobot_msg[i].linear.y = 0
+        twistObstRobot_msg[i].linear.z = 0
+        twistObstRobot_msg[i].angular.x = 0
+        twistObstRobot_msg[i].angular.y = 0
+        twistObstRobot_msg[i].angular.z = 0
 
     time.sleep(10)
     fps = 0
@@ -129,13 +152,26 @@ def main():
         for i in range(0, mainRobotNumber):
             [posMainRobot_msg[i].pose.position.x, posMainRobot_msg[i].pose.position.y] = initPosMainRobot[i]
             posMainRobot_msg[i].pose.position.z = 0
+            posMainRobot_msg[0].pose.orientation.z = 0
+            posMainRobot_msg[1].pose.orientation.z = 1
+            posMainRobot_msg[2].pose.orientation.z = 1
+            posMainRobot_msg[3].pose.orientation.z = 0
             posMainRobot_pub[i].publish(posMainRobot_msg[i])
             twistMainRobot_msg[i].linear.x = 0
             twistMainRobot_msg[i].angular.z = 0
             twistMainRobot_pub[i].publish(twistMainRobot_msg[i])
-        
+        for i in range(0, obsNumber):
+            [posObstRobot_msg[i].pose.position.x, posObstRobot_msg[i].pose.position.y] = initPosObstRobot[i]
+            posObstRobot_msg[i].pose.position.z = 0
+            posObstRobot_msg[0].pose.orientation.z = 1
+            posObstRobot_msg[1].pose.orientation.z = 0
+            posObstRobot_msg[2].pose.orientation.z = 0
+            posObstRobot_msg[3].pose.orientation.z = 1
+            posObstRobot_pub[i].publish(posObstRobot_msg[i])
         # Initialize goalReached flag
         goalReached = []
+
+
         for i in range(0, mainRobotNumber):
             goalReached = goalReached + [False]
         V = [[0, 0] for i in xrange(len(allRobots))]
@@ -149,6 +185,20 @@ def main():
             obst_coordinates = []
             X = []
             overallGoal = []
+            ws_model['circular_obstacles'] = []
+            # Move obstacles
+            for obsRobNo in range(0, obsNumber):
+                # quaternion = (obst_coordinates[obsRobNo].pose.orientation.x, obst_coordinates[obsRobNo].pose.orientation.y, obst_coordinates[obsRobNo].pose.orientation.z, obst_coordinates[obsRobNo].pose.orientation.w)
+                # euler = euler_from_quaternion(quaternion)
+                # yaw = euler[2]
+                # linearX = 0
+                # angularZ = 0
+                
+                # [linearX, angularZ] = takeAction(V[obsRobNo + mainRobotNumber], yaw)
+                twistObstRobot_msg[obsRobNo].linear.x = random.randrange(0, 2)#linearX
+                twistObstRobot_msg[obsRobNo].angular.z = random.randrange(-4, 5)#angularZ
+                twistObstRobot_pub[obsRobNo].publish(twistObstRobot_msg[obsRobNo])
+
             for i in range(0, mainRobotNumber):
                 model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
                 object_coordinates = object_coordinates + [model_coordinates("mainRobot" + str(i), "")]
@@ -157,26 +207,15 @@ def main():
             for i in range(0, obsNumber):
                 model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
                 obst_coordinates = obst_coordinates + [model_coordinates("obsRobot" + str(i), "")]
-                X = X + [[obst_coordinates[i].pose.position.x, obst_coordinates[i].pose.position.y]]
-                overallGoal = overallGoal + [[random.randrange(-2, 3), random.randrange(-2, 3)]]
+                # X = X + [[obst_coordinates[i].pose.position.x, obst_coordinates[i].pose.position.y]]
+                # overallGoal = overallGoal + [[random.randrange(-2, 3), random.randrange(-2, 3)]]
+                ws_model['circular_obstacles'] = ws_model['circular_obstacles'] + [[obst_coordinates[i].pose.position.x, obst_coordinates[i].pose.position.y, agentRadius]]
             V_des = compute_V_des(X, overallGoal, V_max)
-            for i in range(mainRobotNumber, mainRobotNumber + obsNumber):
-                V_des[i] = overallGoal[i]
+            # for i in range(mainRobotNumber, mainRobotNumber + obsNumber):
+            #     V_des[i] = overallGoal[i]
             V = RVO_update(X, V_des, V, ws_model)
 
-            # Move obstacles
-            for obsRobNo in range(0, obsNumber):
-                quaternion = (obst_coordinates[obsRobNo].pose.orientation.x, obst_coordinates[obsRobNo].pose.orientation.y, obst_coordinates[obsRobNo].pose.orientation.z, obst_coordinates[obsRobNo].pose.orientation.w)
-                euler = euler_from_quaternion(quaternion)
-                yaw = euler[2]
-                linearX = 0
-                angularZ = 0
 
-                [linearX, angularZ] = takeAction(V_des[obsRobNo + mainRobotNumber], yaw)
-                twistObstRobot_msg[obsRobNo].linear.x = linearX
-                twistObstRobot_msg[obsRobNo].angular.z = angularZ
-                twistObstRobot_pub[obsRobNo].publish(twistObstRobot_msg[obsRobNo])
-                
             # Move Main robots
             for curRobNo in range(0, mainRobotNumber):
                 quaternion = (object_coordinates[curRobNo].pose.orientation.x, object_coordinates[curRobNo].pose.orientation.y, object_coordinates[curRobNo].pose.orientation.z, object_coordinates[curRobNo].pose.orientation.w)
@@ -209,7 +248,7 @@ def main():
                         rospy.logerr("Collision with an Obstacle")
                         collisionFlag = -1
                         done = True
-            
+
             tmpCount = 1
             for i in range(0, mainRobotNumber):
                 tmpCount = tmpCount * goalReached[i]
