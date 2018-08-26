@@ -1,0 +1,15 @@
+Episode_0_0.021935_avgTime_364.749413_0 
+Episode_1_0.024717_avgTime_26.769698_0 
+Episode_2_0.022539_avgTime_81.842705_0 
+Episode_3_0.022398_avgTime_69.034847_0 
+Episode_4_0.022402_avgTime_8.939013_0 
+Episode_5_0.024362_avgTime_80.616076_0 
+Episode_6_0.022468_avgTime_5.707217_0 
+Episode_7_0.024767_avgTime_23.604335_0 
+Episode_8_0.021394_avgTime_296.789239_0 
+Episode_9_0.021455_avgTime_83.763518_0 
+Episode_10_0.021144_avgTime_4.990161_0 
+Episode_11_0.022397_avgTime_13.125477_0 
+Episode_12_0.023087_avgTime_89.003136_0 
+Episode_13_0.023540_avgTime_101.769736_0 
+Episode_14_0.024450_avgTime_20.930335_0 

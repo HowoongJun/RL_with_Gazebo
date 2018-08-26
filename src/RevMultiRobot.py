@@ -19,7 +19,7 @@ import time
 num_episodes = 201
 obstacleRadius = 0.18
 agentRadius = 0.18
-obsNumber = 4
+obsNumber = 6
 mainRobotNumber = 4
 state_size = 2
 action_size = 9
@@ -28,7 +28,7 @@ goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0
 moveObstacles = True
 
 # mode = 0: Const, mode = 1: Linear, mode = 2: Quad
-mode = 0
+mode = 2
 
 # A2C(Advantage Actor-Critic) agent
 class A2CAgent:
@@ -220,7 +220,7 @@ def main():
     agent = A2CAgent(state_size, action_size)
     # macroAgent = A2CAgent(state_size, action_size)
     initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5], [5, 3.75], [5, 1.25], [0, 1.25], [0, 3.75]]
-    initPosObstRobot = [[1.5, 1.5], [3.5, 3.5], [3.5, 1.5],  [1.5, 3.5], [4, 2], [3, 4], [1, 3], [2, 1]]
+    initPosObstRobot = [[1.5, 1.5], [3.5, 3.5], [3.5, 1.5],  [1.5, 3.5], [0, 2.5], [5, 2.5], [2.5, 0], [2.5, 5]]
     rList = []
     rospy.init_node('circler', anonymous=True)
     rate = rospy.Rate(50) #hz
@@ -296,6 +296,7 @@ def main():
             posMainRobot_msg[1].pose.orientation.z = 1
             posMainRobot_msg[2].pose.orientation.z = 1
             posMainRobot_msg[3].pose.orientation.z = 0
+
             posMainRobot_pub[i].publish(posMainRobot_msg[i])
         for i in range(0, obsNumber):
             [posObstRobot_msg[i].pose.position.x, posObstRobot_msg[i].pose.position.y] = initPosObstRobot[i]
@@ -304,6 +305,7 @@ def main():
             posObstRobot_msg[1].pose.orientation.z = 0
             posObstRobot_msg[2].pose.orientation.z = 0
             posObstRobot_msg[3].pose.orientation.z = 1
+            posObstRobot_msg[5].pose.orientation.z = 1
             posObstRobot_pub[i].publish(posObstRobot_msg[i])
         epStart = time.time()
         # Initialize goalReached flag
@@ -461,6 +463,7 @@ def main():
         rospy.logwarn("Average Time: %f s", elapsed)
         # rospy.logwarn("Average FPS: %f fps", fps)
         rospy.logwarn("=====================================================================")
+    f.write(str(100.0*sum(rList)/(e+1)) + "%")
     f.close()
 if __name__ == '__main__':
     try:

@@ -23,7 +23,7 @@ goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0
 moveObstacles = True
 
 # mode = 0: Const, mode = 1: Linear, mode = 2: Quad
-mode = 0
+mode = 2
 
 ws_model = dict()
 ws_model['robot_radius'] = agentRadius
