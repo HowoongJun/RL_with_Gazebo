@@ -17,8 +17,8 @@ import time
 # Environment Setting
 num_episodes = 201
 agentRadius = 0.17
-obsNumber = 4
-mainRobotNumber = 4
+obsNumber = 0
+mainRobotNumber = 12
 goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0], [0, 1.25], [0, 3.75], [5, 1.25], [5, 3.75]] 
 moveObstacles = True
 
@@ -165,8 +165,8 @@ def main():
             posObstRobot_msg[i].pose.position.z = 0
             posObstRobot_msg[0].pose.orientation.z = 1
             posObstRobot_msg[1].pose.orientation.z = 0
-            posObstRobot_msg[2].pose.orientation.z = 0
-            posObstRobot_msg[3].pose.orientation.z = 1
+            # posObstRobot_msg[2].pose.orientation.z = 0
+            # posObstRobot_msg[3].pose.orientation.z = 1
             posObstRobot_pub[i].publish(posObstRobot_msg[i])
         # Initialize goalReached flag
         goalReached = []
@@ -195,8 +195,8 @@ def main():
                 # angularZ = 0
                 
                 # [linearX, angularZ] = takeAction(V[obsRobNo + mainRobotNumber], yaw)
-                twistObstRobot_msg[obsRobNo].linear.x = random.randrange(0, 2)#linearX
-                twistObstRobot_msg[obsRobNo].angular.z = random.randrange(-4, 5)#angularZ
+                twistObstRobot_msg[obsRobNo].linear.x = 0#random.randrange(0, 2)#linearX
+                twistObstRobot_msg[obsRobNo].angular.z = 0#random.randrange(-4, 5)#angularZ
                 twistObstRobot_pub[obsRobNo].publish(twistObstRobot_msg[obsRobNo])
 
             for i in range(0, mainRobotNumber):

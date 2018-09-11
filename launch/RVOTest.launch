@@ -3,13 +3,13 @@
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <!-- Because the world path is relative to GAZEBO_RESOURCE_PATH, we append to it here. -->
     <env name="GAZEBO_RESOURCE_PATH" value="$(env GAZEBO_RESOURCE_PATH):$(find simple_create)"/>
-    <arg name="world_name" value="worlds/HRVOTest.world"/>
+    <arg name="world_name" value="worlds/RVOTest.world"/>
     <arg name="paused" value="false"/>
     <arg name="use_sim_time" value="true"/>
     <arg name="gui" value="true"/>
     <arg name="headless" value="false"/>
     <arg name="debug" value="false"/>
   </include>
-  <node name="publisher" pkg="simple_create" type="HRVO.py" required="true" />
+  <node name="publisher" pkg="simple_create" type="RVONonholonomic.py" required="true" />
 
 </launch>

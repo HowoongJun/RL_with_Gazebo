@@ -1,0 +1,15 @@
+Episode_0_0.025026 
+Episode_1_0.025451 
+Episode_2_0.024946 
+Episode_3_0.024642 
+Episode_4_0.025091 
+Episode_5_0.024618 
+Episode_6_0.024854 
+Episode_7_0.024659 
+Episode_8_0.025607 
+Episode_9_0.025621 
+Episode_10_0.025100 
+Episode_11_0.024929 
+Episode_12_0.025675 
+Episode_13_0.024395 
+Episode_14_0.025255 
