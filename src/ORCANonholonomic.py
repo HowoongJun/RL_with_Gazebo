@@ -3,8 +3,6 @@ import rospy
 import numpy as np
 import math
 import rvo2
-# from RVO_Py_MAS.RVO import RVO_update, reach, compute_V_des
-# from RVO_Py_MAS.vis import visualize_traj_dynamic
 from geometry_msgs.msg import Twist
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import GetModelState
@@ -18,13 +16,12 @@ import time
 # Environment Setting
 num_episodes = 201
 agentRadius = 0.17
-obsNumber = 0
+obsNumber = 2
 mainRobotNumber = 4
-goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0], [0, 1.25], [0, 3.75], [5, 1.25], [5, 3.75]] 
 moveObstacles = True
 
 # mode = 0: Const, mode = 1: Linear, mode = 2: Quad
-mode = 2
+mode = 0
 
 def takeAction(desiredVector, robotYaw):
     linearX = 0
@@ -74,6 +71,8 @@ def takeAction(desiredVector, robotYaw):
 def main():
     initPosMainRobot = [[0, 0], [5, 0], [5, 5], [0, 5], [0, 2.5], [2.5, 0], [5, 2.5], [2.5, 5], [5, 3.75], [5, 1.25], [0, 1.25], [0, 3.75]]
     initPosObstRobot = [[1.5, 1.5], [3.5, 3.5], [3.5, 1.5],  [1.5, 3.5], [4, 2], [3, 4], [1, 3], [2, 1]]
+    goalPos = [[5, 5], [0, 5], [0, 0], [5, 0], [5, 2.5], [2.5, 5], [0, 2.5], [2.5, 0], [0, 1.25], [0, 3.75], [5, 1.25], [5, 3.75]] 
+
     allRobots = []
 
     for i in range(0, mainRobotNumber):
@@ -89,11 +88,12 @@ def main():
     rList = []
     f = open("/home/howoongjun/catkin_ws/src/simple_create/src/DataSave/log/log" + str(mainRobotNumber) + "robots" + str(obsNumber) + "obstacles_ORCA_" + tmpStr + "_" + datetime.datetime.now().strftime('%y%m%d') + ".txt", 'w')
     
-    sim = rvo2.PyRVOSimulator(1/60., agentRadius * 2, 4, 1.5, 2, agentRadius, 1)
-    a0 = sim.addAgent((initPosMainRobot[0][0], initPosMainRobot[0][1]))
-    a1 = sim.addAgent((initPosMainRobot[1][0], initPosMainRobot[1][1]))
-    a2 = sim.addAgent((initPosMainRobot[2][0], initPosMainRobot[2][1]))
-    a3 = sim.addAgent((initPosMainRobot[3][0], initPosMainRobot[3][1]))
+    sim = rvo2.PyRVOSimulator(1/60., agentRadius * 20, 12, 1.5, 2, agentRadius * 1.55, 2.0)
+    SimAgent = []
+    for i in range(0, mainRobotNumber):
+        SimAgent = SimAgent + [sim.addAgent((initPosMainRobot[i][0], initPosMainRobot[i][1]))]
+    for i in range(0, obsNumber):
+        SimAgent = SimAgent + [sim.addAgent((initPosObstRobot[i][0], initPosObstRobot[i][1]))]
 
     rospy.init_node('circler', anonymous=True)
     rate = rospy.Rate(50) #hz
@@ -158,6 +158,9 @@ def main():
             posMainRobot_msg[1].pose.orientation.z = 1
             posMainRobot_msg[2].pose.orientation.z = 1
             posMainRobot_msg[3].pose.orientation.z = 0
+            # posMainRobot_msg[6].pose.orientation.z = 1
+            # posMainRobot_msg[9].pose.orientation.z = 1
+            # posMainRobot_msg[8].pose.orientation.z = 1
             posMainRobot_pub[i].publish(posMainRobot_msg[i])
             twistMainRobot_msg[i].linear.x = 0
             twistMainRobot_msg[i].angular.z = 0
@@ -165,14 +168,13 @@ def main():
         for i in range(0, obsNumber):
             [posObstRobot_msg[i].pose.position.x, posObstRobot_msg[i].pose.position.y] = initPosObstRobot[i]
             posObstRobot_msg[i].pose.position.z = 0
-            posObstRobot_msg[0].pose.orientation.z = 1
-            posObstRobot_msg[1].pose.orientation.z = 0
+            posObstRobot_msg[0].pose.orientation.z = 0
+            posObstRobot_msg[1].pose.orientation.z = 1
             # posObstRobot_msg[2].pose.orientation.z = 0
             # posObstRobot_msg[3].pose.orientation.z = 1
             posObstRobot_pub[i].publish(posObstRobot_msg[i])
         # Initialize goalReached flag
         goalReached = []
-
 
         for i in range(0, mainRobotNumber):
             goalReached = goalReached + [False]
@@ -185,11 +187,11 @@ def main():
             object_coordinates = []
             obst_coordinates = []
             prefVel = []
-            
+
             # Move obstacles
             for obsRobNo in range(0, obsNumber):
-                twistObstRobot_msg[obsRobNo].linear.x = 0#random.randrange(0, 2)#linearX
-                twistObstRobot_msg[obsRobNo].angular.z = 0#random.randrange(-4, 5)#angularZ
+                twistObstRobot_msg[obsRobNo].linear.x = random.randrange(0, 2)#linearX
+                twistObstRobot_msg[obsRobNo].angular.z = random.randrange(-4, 5)#angularZ
                 twistObstRobot_pub[obsRobNo].publish(twistObstRobot_msg[obsRobNo])
 
             for i in range(0, mainRobotNumber):
@@ -199,7 +201,8 @@ def main():
             for i in range(0, obsNumber):
                 model_coordinates = rospy.ServiceProxy('gazebo/get_model_state', GetModelState)
                 obst_coordinates = obst_coordinates + [model_coordinates("obsRobot" + str(i), "")]
-            
+                sim.setAgentPosition(mainRobotNumber + i, (obst_coordinates[i].pose.position.x, obst_coordinates[i].pose.position.y))
+
             # Move Main robots
             for curRobNo in range(0, mainRobotNumber):
                 quaternion = (object_coordinates[curRobNo].pose.orientation.x, object_coordinates[curRobNo].pose.orientation.y, object_coordinates[curRobNo].pose.orientation.z, object_coordinates[curRobNo].pose.orientation.w)
@@ -207,14 +210,10 @@ def main():
                 yaw = euler[2]
                 linearX = 0
                 angularZ = 0
-                sim.setAgentPosition(curRobNo, (object_coordinates[curRobNo].pose.orientation.x, object_coordinates[curRobNo].pose.orientation.y))
-                tmpPref = [goalPos[curRobNo][0] - object_coordinates[curRobNo].pose.orientation.x, goalPos[curRobNo][1] - object_coordinates[curRobNo].pose.orientation.y]
-                # rospy.logwarn(sim.getAgentPosition(curRobNo))
-                prefVel = [tmpPref[0] / math.sqrt(tmpPref[0]**2 + tmpPref[1]**2), tmpPref[1] / math.sqrt(tmpPref[0]**2 + tmpPref[1]**2)]
+                sim.setAgentPosition(curRobNo, (object_coordinates[curRobNo].pose.position.x, object_coordinates[curRobNo].pose.position.y))
+                tmpPref = [goalPos[curRobNo][0] - object_coordinates[curRobNo].pose.position.x, goalPos[curRobNo][1] - object_coordinates[curRobNo].pose.position.y]
+                prefVel = [2.0 * tmpPref[0] / math.sqrt(tmpPref[0]**2 + tmpPref[1]**2), 2.0 * tmpPref[1] / math.sqrt(tmpPref[0]**2 + tmpPref[1]**2)]
                 sim.setAgentPrefVelocity(curRobNo, (prefVel[0], prefVel[1]))
-                rospy.logwarn(prefVel)
-                rospy.logwarn(sim.getAgentVelocity(curRobNo))
-                rospy.logwarn("\n")
                 sim.doStep()
                 [linearX, angularZ] = takeAction(sim.getAgentVelocity(curRobNo), yaw)
                 twistMainRobot_msg[curRobNo].linear.x = linearX
@@ -238,7 +237,7 @@ def main():
                         rospy.logerr("Collision with an Obstacle")
                         collisionFlag = -1
                         done = True
-            rospy.logwarn("================================")
+            # rospy.logwarn("================================")
 
             tmpCount = 1
             for i in range(0, mainRobotNumber):

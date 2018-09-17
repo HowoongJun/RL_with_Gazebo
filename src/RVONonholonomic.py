@@ -195,8 +195,8 @@ def main():
                 # angularZ = 0
                 
                 # [linearX, angularZ] = takeAction(V[obsRobNo + mainRobotNumber], yaw)
-                twistObstRobot_msg[obsRobNo].linear.x = 0#random.randrange(0, 2)#linearX
-                twistObstRobot_msg[obsRobNo].angular.z = 0#random.randrange(-4, 5)#angularZ
+                twistObstRobot_msg[obsRobNo].linear.x = random.randrange(0, 2)#linearX
+                twistObstRobot_msg[obsRobNo].angular.z = random.randrange(-4, 5)#angularZ
                 twistObstRobot_pub[obsRobNo].publish(twistObstRobot_msg[obsRobNo])
 
             for i in range(0, mainRobotNumber):
