@@ -9,7 +9,7 @@ Must execute above
 `source ~/catkin_ws/devel/setup.bash`
 
 
-For running the code
+For running the sample code
 
 `roslaunch simple_create create_world.launch`
 
