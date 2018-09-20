@@ -11,5 +11,5 @@ Must execute above
 
 For running the sample code
 
-`roslaunch simple_create create_world.launch`
+`roslaunch CATKINFOLDER LAUNCHFILE.launch`
 
