@@ -1,6 +1,6 @@
 # RL_with_Gazebo
 
-Must execute above
+Must execute below
 
 `source /opt/ros/kinetic/setup.bash`
 
