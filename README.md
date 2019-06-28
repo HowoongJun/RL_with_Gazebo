@@ -11,5 +11,5 @@ Must execute below
 
 For running the sample code
 
-`roslaunch CATKINFOLDER LAUNCHFILE.launch`
+`roslaunch <CATKINFOLDER> <LAUNCHFILE>.launch`
 
